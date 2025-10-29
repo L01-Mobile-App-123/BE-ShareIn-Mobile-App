@@ -13,5 +13,6 @@ export default () => ({
 
   firebase: {
     serviceAccountKey: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+    webApiKey: process.env.WEB_API_KEY,
   },
 });

@@ -6,60 +6,81 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import axios from 'axios';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { FirebaseAuthGuard } from './firebase-auth.guard';
+import { SignUpDto } from './dto/sign-up.dto';
+import { VerifyTokenDto } from './dto/verify-token.dto';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
+  ) {}
+
+  getFirebaseConfig() {
+    const apiKey = this.configService.get<string>('firebase.webApiKey');
+
+    return { apiKey };
+  }
 
   /**
    * Đăng ký user mới (signup)
    */
-  @Post('signUp')
-  @ApiOperation({ summary: 'Sign up new user', description: 'Tạo user mới trên Firebase và DB.' })
+  @Post('sign-up')
+  @ApiOperation({ summary: 'Sign up new user' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request (Validation failed)' }) // Thêm lỗi 400
+  async signup(@Body() signUpDto: SignUpDto) {
+    return this.authService.signup(signUpDto.email, signUpDto.password);
+  }
+  /**
+   * Tạo token test (không dùng trong thực tế)
+   */
+  @Post('test-token')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string', example: 'user@example.com' },
-        password: { type: 'string', example: '123456' },
+        uid: { type: 'string', example: 'iDNX5J3eOAPgMT7ZlEYHZDgAlMI2' },
+        email: { type: 'string', example: 'test@example.com' },
       },
-      required: ['email', 'password'],
+      required: ['uid', 'email'],
     },
   })
-  @ApiResponse({ status: 201, description: 'User created successfully' })
-  async signup(@Body() body: { email: string; password: string }) {
-    return this.authService.signup(body.email, body.password);
+  @ApiOperation({ summary: 'Create test Firebase ID token' })
+  @ApiResponse({ status: 201, description: 'Test token created successfully' })
+  async getTestToken(@Body() body: {uid: string, email: String}) {
+    const { customToken } = await this.authService.createTestToken(body.uid, body.email);
+
+    const res = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${this.getFirebaseConfig().apiKey}`,
+      { token: customToken, returnSecureToken: true }
+    );
+
+    return { idToken: res.data.idToken };
   }
 
   /**
    * Xác thực token Firebase (login hoặc verify)
    */
   @Post('verify')
-  @ApiOperation({ summary: 'Verify Firebase ID token', description: 'Xác thực token và trả về thông tin user tương ứng.' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        idToken: { type: 'string', example: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...' },
-      },
-      required: ['idToken'],
-    },
-  })
+  @ApiOperation({ summary: 'Verify Firebase ID token' })
   @ApiResponse({ status: 200, description: 'Token is valid' })
   @ApiResponse({ status: 401, description: 'Invalid or expired token' })
-  async verify(@Body() body: { idToken: string }) {
-    return this.authService.verifyToken(body.idToken);
+  async verify(@Body() verifyTokenDto: VerifyTokenDto) {
+    return this.authService.verifyToken(verifyTokenDto.idToken);
   }
 
   /**
    * Logout user (revoke token)
    */
   @UseGuards(FirebaseAuthGuard)
-  @Post('logOut')
+  @Post('log-out')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout user', description: 'Revoke Firebase refresh tokens for the current user.' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
@@ -72,7 +93,7 @@ export class AuthController {
    * Test route có bảo vệ (Firebase Guard)
    */
   @UseGuards(FirebaseAuthGuard)
-  @Get('getInfo')
+  @Get('info')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user info', description: 'Trả về thông tin user hiện tại từ Firebase token.' })
   @ApiResponse({ status: 200, description: 'User info returned successfully' })

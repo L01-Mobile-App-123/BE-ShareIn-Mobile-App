@@ -7,6 +7,14 @@ export class AuthService {
   constructor(private userService: UserService) {}
 
   /**
+   *  Tạo custom token để test (không dùng trong thực tế)
+   */
+  async createTestToken(uid: string, email: String) {
+    const customToken = await admin.auth().createCustomToken(uid, { email });
+    return { customToken };
+  }
+
+  /**
    * Verify token và tự động tạo user mới nếu chưa có
    */
   async verifyToken(idToken: string) {
