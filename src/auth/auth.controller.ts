@@ -7,12 +7,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import axios from 'axios';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { FirebaseAuthGuard } from './firebase-auth.guard';
-import { SignUpDto } from './dto/sign-up.dto';
-import { VerifyTokenDto } from './dto/verify-token.dto';
 import { ConfigService } from '@nestjs/config';
+import { User } from '@entities/user.entity';
+import { DecodedIdToken } from 'firebase-admin/auth';
+
+interface RequestWithUser extends Request {
+  user: DecodedIdToken;
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -29,16 +34,6 @@ export class AuthController {
   }
 
   /**
-   * Đăng ký user mới (signup)
-   */
-  @Post('sign-up')
-  @ApiOperation({ summary: 'Sign up new user' })
-  @ApiResponse({ status: 201, description: 'User created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad Request (Validation failed)' }) // Thêm lỗi 400
-  async signup(@Body() signUpDto: SignUpDto) {
-    return this.authService.signup(signUpDto.email, signUpDto.password);
-  }
-  /**
    * Tạo token test (không dùng trong thực tế)
    */
   @Post('test-token')
@@ -54,7 +49,7 @@ export class AuthController {
   })
   @ApiOperation({ summary: 'Create test Firebase ID token' })
   @ApiResponse({ status: 201, description: 'Test token created successfully' })
-  async getTestToken(@Body() body: {uid: string, email: String}) {
+  async getTestToken(@Body() body: {uid: string, email: string}) {
     const { customToken } = await this.authService.createTestToken(body.uid, body.email);
 
     const res = await axios.post(
@@ -68,12 +63,16 @@ export class AuthController {
   /**
    * Xác thực token Firebase (login hoặc verify)
    */
+  @UseGuards(FirebaseAuthGuard)
   @Post('verify')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify Firebase ID token' })
   @ApiResponse({ status: 200, description: 'Token is valid' })
   @ApiResponse({ status: 401, description: 'Invalid or expired token' })
-  async verify(@Body() verifyTokenDto: VerifyTokenDto) {
-    return this.authService.verifyToken(verifyTokenDto.idToken);
+  async verify(@Req() request: RequestWithUser): Promise<User> {
+    const decodedToken = request.user;
+    
+    return this.authService.verifyToken(decodedToken);
   }
 
   /**
@@ -85,8 +84,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout user', description: 'Revoke Firebase refresh tokens for the current user.' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async logout(@Req() req) {
-    return this.authService.logout(req.user.uid);
+  async logout(@Req() request: RequestWithUser) {
+    return this.authService.logout(request.user.uid);
   }
 
   /**
@@ -98,7 +97,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user info', description: 'Trả về thông tin user hiện tại từ Firebase token.' })
   @ApiResponse({ status: 200, description: 'User info returned successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async me(@Req() req) {
-    return req.user;
+  async me(@Req() request: RequestWithUser) {
+    return request.user;
   }
 }

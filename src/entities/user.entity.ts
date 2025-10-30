@@ -1,25 +1,94 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
+import { Post } from './post.entity';
+import { Conversation } from './conversation.entity';
+import { Message } from './message.entity';
+import { Notification } from './notification.entity';
+import { Rating } from './rating.entity';
+import { UserInterest } from './user-interest.entity';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  user_id: string;
 
-  @Column({ unique: true })
-  uid: string; // UID của Firebase
+  @Index({ unique: true })
+  @Column({ length: 128 })
+  firebase_uid: string; // <-- Cột để liên kết với Firebase Auth
 
-  @Column({ nullable: true })
+  @Index({ unique: true })
+  @Column({ length: 255 })
   email: string;
 
-  @Column({ nullable: true })
-  displayName: string;
+  @Column({ length: 100 })
+  full_name: string;
 
-  @Column({ nullable: true })
-  photoURL: string;
+  @Column({ length: 20, nullable: true })
+  phone_number: string;
+
+  @Column({ type: 'text', nullable: true })
+  avatar_url: string;
+
+  @Column({ length: 255, nullable: true })
+  school_name: string;
+
+  @Column({ length: 255, nullable: true })
+  dormitory: string;
+
+  @Column({ type: 'date', nullable: true })
+  date_of_birth: Date;
+
+  @Column({ type: 'int', nullable: true })
+  academic_year: number;
+
+  @Column({ type: 'int', default: 0 })
+  reputation_score: number;
+
+  @Column({ type: 'int', default: 0 })
+  total_votes_up: number;
+
+  @Column({ type: 'int', default: 0 })
+  total_votes_down: number;
+
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
+
+  // --- Quan hệ ---
+
+  @OneToMany(() => Post, (post) => post.user)
+  posts: Post[];
+
+  @OneToMany(() => Conversation, (convo) => convo.initiator)
+  conversations_initiated: Conversation[];
+
+  @OneToMany(() => Conversation, (convo) => convo.recipient)
+  conversations_as_recipient: Conversation[];
+
+  @OneToMany(() => Message, (message) => message.sender)
+  messages_sent: Message[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+
+  @OneToMany(() => UserInterest, (interest) => interest.user)
+  user_interests: UserInterest[];
+
+  @OneToMany(() => Rating, (rating) => rating.rater)
+  ratings_given: Rating[];
+
+  @OneToMany(() => Rating, (rating) => rating.rated_user)
+  ratings_received: Rating[];
 }

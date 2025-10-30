@@ -1,0 +1,5 @@
+export enum NotificationType {
+  NEW_POST_IN_INTEREST = 'NEW_POST_IN_INTEREST',
+  NEW_MESSAGE = 'NEW_MESSAGE',
+  NEW_RATING = 'NEW_RATING',
+}
