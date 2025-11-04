@@ -34,7 +34,6 @@ export class Category {
   @OneToMany(() => UserInterest, (interest) => interest.category)
   user_interests: UserInterest[];
 
-  // CẬP NHẬT: Xóa 'keywords' (simple-array) và thay bằng quan hệ 1:N
   @OneToMany(() => CategoryKeyword, (keyword) => keyword.category)
   keywords: CategoryKeyword[];
 }

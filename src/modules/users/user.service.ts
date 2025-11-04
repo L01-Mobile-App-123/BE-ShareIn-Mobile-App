@@ -5,13 +5,6 @@ import { User } from '@modules/entities/user.entity';
 import { type UserRecord } from 'firebase-admin/auth';
 import { UpdateUserDto } from './dto/UpdateUser.dto'
 
-export type FirebaseUser = {
-  firebase_uid: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-};
-
 @Injectable()
 export class UserService {
   constructor(
@@ -92,4 +85,13 @@ export class UserService {
     
     return updatedUser;
   }
-}
+
+  async updateAvatar(user_id: string, newAvatarUrl: string): Promise<User> {
+    // Cập nhật trường avatar_url
+    await this.repo.update(user_id, { avatar_url: newAvatarUrl });
+
+    // Lấy và trả về người dùng đã được cập nhật
+    const updatedUser = await this.repo.findOne({ where: { user_id } });
+    return updatedUser!; // ! an toàn vì đã kiểm tra user tồn tại ở trên
+  }
+  }
