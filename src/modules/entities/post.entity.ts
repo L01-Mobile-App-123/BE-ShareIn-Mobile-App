@@ -12,7 +12,7 @@ import {
 import { User } from './user.entity';
 import { Category } from './category.entity';
 import { Notification } from './notification.entity';
-import { PostTransactionType } from './enums/post-transaction-type.enum';
+import { PostTransactionType } from '../../common/enums/post-transaction-type.enum';
 
 @Entity('posts')
 export class Post {

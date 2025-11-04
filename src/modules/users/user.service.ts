@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '@entities/user.entity';
+import { User } from '@modules/entities/user.entity';
 import { type UserRecord } from 'firebase-admin/auth';
-// Định nghĩa kiểu dữ liệu cho rõ ràng
+import { UpdateUserDto } from './dto/UpdateUser.dto'
+
 export type FirebaseUser = {
   firebase_uid: string;
   email: string;
@@ -25,9 +26,6 @@ export class UserService {
     return this.repo.findOne({ where: { firebase_uid } });
   }
 
-  /**
-   * Tìm người dùng bằng email
-   */
   async findByEmail(email: string): Promise<User | null> {
     if (!email) return null;
     return this.repo.findOne({ where: { email } });
@@ -59,5 +57,39 @@ export class UserService {
     });
 
     return this.repo.save(newUser);
+  }
+
+  async findOne(user_id: string): Promise<User> {
+    const user = await this.repo.findOne({
+      where: { user_id, is_active: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID "${user_id}" hoặc người dùng không hoạt động.`);
+    }
+    return user;
+  }
+
+  async update(user_id: string, updateData: UpdateUserDto): Promise<User> {
+    const user = await this.repo.findOne({ where: { user_id } });
+    if (!user) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID "${user_id}".`);
+    }
+    
+    const updatePayload: Partial<User> = { ...updateData };
+    
+    if (updateData.date_of_birth) {
+        updatePayload.date_of_birth = new Date(updateData.date_of_birth);
+    }
+    
+    await this.repo.update(user_id, updatePayload);
+    
+    const updatedUser = await this.repo.findOne({ where: { user_id } });
+    
+    if (!updatedUser) {
+        throw new BadRequestException('Lỗi khi lấy dữ liệu người dùng sau khi cập nhật.');
+    }
+    
+    return updatedUser;
   }
 }

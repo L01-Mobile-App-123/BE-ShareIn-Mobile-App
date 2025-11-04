@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Conversation } from './conversation.entity';
 import { User } from './user.entity';
-import { MessageType } from './enums/message-type.enum';
+import { MessageType } from '../../common/enums/message-type.enum';
 
 @Entity('messages')
 export class Message {

@@ -7,17 +7,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import axios from 'axios';
-import { Request } from 'express';
+import { type UserRequest } from '@common/interfaces/userRequest.interface'
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { FirebaseAuthGuard } from './firebase-auth.guard';
+import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { ConfigService } from '@nestjs/config';
-import { User } from '@entities/user.entity';
-import { DecodedIdToken } from 'firebase-admin/auth';
-
-interface RequestWithUser extends Request {
-  user: DecodedIdToken;
-}
+import { ApiResponseDto } from '@common/dto/api-response.dto'
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -69,10 +64,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify Firebase ID token' })
   @ApiResponse({ status: 200, description: 'Token is valid' })
   @ApiResponse({ status: 401, description: 'Invalid or expired token' })
-  async verify(@Req() request: RequestWithUser): Promise<User> {
+  async verify(@Req() request: UserRequest): Promise<ApiResponseDto<{id: string, email: string, name: string}>> {
     const decodedToken = request.user;
-    
-    return this.authService.verifyToken(decodedToken);
+
+    const user = await this.authService.verifyToken(decodedToken);
+
+    return new ApiResponseDto('Verify user successfully', {
+      id: user.user_id,
+      email: user.email,
+      name: user.full_name,
+    });
   }
 
   /**
@@ -84,20 +85,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout user', description: 'Revoke Firebase refresh tokens for the current user.' })
   @ApiResponse({ status: 200, description: 'User logged out successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async logout(@Req() request: RequestWithUser) {
-    return this.authService.logout(request.user.uid);
-  }
-
-  /**
-   * Test route có bảo vệ (Firebase Guard)
-   */
-  @UseGuards(FirebaseAuthGuard)
-  @Get('info')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user info', description: 'Trả về thông tin user hiện tại từ Firebase token.' })
-  @ApiResponse({ status: 200, description: 'User info returned successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async me(@Req() request: RequestWithUser) {
-    return request.user;
+  async logout(@Req() request: UserRequest): Promise<ApiResponseDto<string>> {
+    const msg = await this.authService.logout(request.user.uid);
+    return new ApiResponseDto(msg);
   }
 }

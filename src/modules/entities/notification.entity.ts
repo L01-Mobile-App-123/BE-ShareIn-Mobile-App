@@ -10,7 +10,7 @@ import {
 import { User } from './user.entity';
 import { Post } from './post.entity';
 import { Category } from './category.entity'; 
-import { NotificationType } from './enums/notification-type.enum';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 @Entity('notifications')
 export class Notification {

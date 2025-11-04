@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PostModule } from './post/post.module';
-import { SearchModule } from './search/search.module';
-import { ChatModule } from './chat/chat.module';
-import { NotificationsModule } from './notifications/notifications.module';
-import { AuthModule } from './auth/auth.module';
-import { AppConfigModule } from './config/config.module';
+import { PostModule } from '@modules/post/post.module';
+import { SearchModule } from '@modules/search/search.module';
+import { ChatModule } from '@modules/chat/chat.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { AuthModule } from '@modules/auth/auth.module';
+import { UsersModule } from '@modules/users/users.module';
+import { AppConfigModule } from '@config/config.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
@@ -35,6 +36,7 @@ import { ConfigService } from '@nestjs/config';
     ChatModule,
     NotificationsModule,
     AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

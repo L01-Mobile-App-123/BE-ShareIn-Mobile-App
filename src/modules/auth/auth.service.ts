@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { admin } from '../firebase/firebase-admin';
-import { UserService } from '@users/user.service';
+import { admin } from '@firebase/firebase-admin';
+import { UserService } from '@modules/users/user.service';
 import { UserRecord, DecodedIdToken } from 'firebase-admin/auth';
 
 @Injectable()
@@ -39,11 +39,11 @@ export class AuthService {
   async logout(uid: string) {
     try {
       await admin.auth().revokeRefreshTokens(uid);
-      return { message: 'User logged out successfully' };
+      return 'User logged out successfully';
     } catch (err) {
       console.error('Error revoking refresh tokens:', err);
       // Vẫn trả về thành công cho client, vì dù sao client cũng đã xóa token
-      return { message: 'User logged out, but token revocation failed on server.' };
+      return 'User logged out, but token revocation failed on server.';
     }
   }
 }
