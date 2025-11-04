@@ -50,7 +50,7 @@ export class UserController {
     return new ApiResponseDto("Update user's infor succesfully", plainToInstance(GetUserDto, updatedUser));
   }
 
-  @Patch('avatar/:id')
+  @Patch(':id/avatar')
   @ApiOperation({ summary: 'Cập nhật ảnh đại diện (avatar)' })
   @ApiParam({ name: 'id', description: 'User ID (UUID) của người dùng cần cập nhập thông tin', example: '93aba9a2-5c58-4e9f-9b94-d1fd5caf2659' })
   @ApiConsumes('multipart/form-data') // Bắt buộc cho Swagger biết là form-data
