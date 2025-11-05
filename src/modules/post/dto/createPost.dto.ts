@@ -1,9 +1,9 @@
 import { IsNotEmpty, IsString, IsNumber, IsOptional, IsEnum, IsArray, IsUUID, Min, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PostTransactionType } from '@common/enums/post-transaction-type.enum'; // Import enum của bạn
+import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 
 export class CreatePostDto {
-  @ApiProperty({ description: 'ID danh mục (Category ID)', example: 'f3a4b5c6-d7e8-9012-3456-7890abcdef12' })
+  @ApiProperty({ description: 'ID danh mục (Category ID)', example: '048de9e8-f159-496d-ac14-cb699af30bb1' })
   @IsUUID()
   @IsNotEmpty()
   category_id: string;

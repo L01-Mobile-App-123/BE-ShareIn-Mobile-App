@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsNumber, IsEnum, IsUUID, MaxLength, Min } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsNumber, IsEnum, IsUUID, MaxLength, Min, IsNotEmpty } from 'class-validator';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 
 export class UpdatePostDto {

@@ -9,7 +9,7 @@ import { UserController } from './user.controller';
 @Module({
   imports: [TypeOrmModule.forFeature([User]), CloudinaryModule],
   providers: [UserService, FirebaseAuthGuard],
-  exports: [UserService],
+  exports: [UserService, FirebaseAuthGuard, TypeOrmModule],
   controllers: [UserController]
 })
 export class UsersModule {}

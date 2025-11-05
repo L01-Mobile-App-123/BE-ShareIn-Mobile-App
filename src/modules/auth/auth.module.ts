@@ -7,6 +7,7 @@ import { UsersModule } from '@modules/users/users.module';
 @Module({
   imports: [UsersModule],
   controllers: [AuthController],
-  providers: [AuthService, FirebaseAuthGuard],
+  providers: [AuthService],
+  exports: []
 })
 export class AuthModule {}

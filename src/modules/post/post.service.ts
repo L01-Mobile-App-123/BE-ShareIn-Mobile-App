@@ -13,29 +13,21 @@ export class PostService {
     private postsRepository: Repository<Post>,
   ) {}
 
-  /**
-   * Tạo bài đăng mới
-   */
   async create(user_id: string, createPostDto: CreatePostDto): Promise<Post> {
-    // 1. Kiểm tra logic nghiệp vụ (ví dụ: giá phải có nếu là bán)
+    //Kiểm tra logic nghiệp vụ (ví dụ: giá phải có nếu là bán)
     if (createPostDto.transaction_type === PostTransactionType.SELL && (createPostDto.price === undefined || createPostDto.price === null)) {
       throw new BadRequestException('Trường giá (price) là bắt buộc khi loại giao dịch là BÁN_RE.');
     }
       
-    // 2. Tạo Entity
     const newPost = this.postsRepository.create({
       ...createPostDto,
-      user_id, // Gán ID người dùng đang đăng nhập
+      user_id,
       image_urls: [], // Khởi tạo mảng rỗng, sẽ được cập nhật sau khi upload
     });
 
-    // 3. Lưu vào DB
     return this.postsRepository.save(newPost);
   }
 
-  /**
-   * Xem chi tiết bài đăng
-   */
   async findOne(post_id: string): Promise<Post> {
     const post = await this.postsRepository.findOne({
       where: { post_id },
@@ -52,9 +44,6 @@ export class PostService {
     return post;
   }
   
-  /**
-   * Lấy danh sách bài đăng (có thể lọc theo user_id)
-   */
   async findAll(filters: { user_id?: string; category_id?: string; is_available?: boolean }, page = 1, limit = 20): Promise<{ data: Post[], total: number }> {
     const skip = (page - 1) * limit;
     
@@ -75,9 +64,6 @@ export class PostService {
     return { data, total };
   }
 
-  /**
-   * Cập nhật bài đăng (chỉ chủ sở hữu)
-   */
   async update(post_id: string, user_id: string, updatePostDto: UpdatePostDto): Promise<Post> {
     const post = await this.postsRepository.findOne({ where: { post_id } });
 
@@ -101,10 +87,6 @@ export class PostService {
     return this.postsRepository.save(post);
   }
   
-  /**
-   * Cập nhật danh sách URL ảnh
-   * (Sử dụng sau khi upload ảnh thành công)
-   */
   async updateImageUrls(post_id: string, user_id: string, imageUrls: string[]): Promise<Post> {
       const post = await this.postsRepository.findOne({ where: { post_id } });
 
@@ -125,9 +107,6 @@ export class PostService {
       return this.postsRepository.save(post);
   }
 
-  /**
-   * Xóa mềm hoặc Ẩn bài đăng (chỉ chủ sở hữu)
-   */
   async softDeleteOrHide(post_id: string, user_id: string, action: 'hide' | 'delete'): Promise<{ message: string }> {
     const post = await this.postsRepository.findOne({ where: { post_id } });
 

@@ -20,7 +20,6 @@
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"],
       "@firebase/*": ["src/firebase/*"],
-      "@seed/*": ["src/seed/*"],
     },
     "incremental": true,
     "skipLibCheck": true,
