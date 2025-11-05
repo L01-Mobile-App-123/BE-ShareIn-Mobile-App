@@ -20,9 +20,6 @@ export class Category {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'text', nullable: true })
-  icon_url: string;
-
   @CreateDateColumn()
   created_at: Date;
 

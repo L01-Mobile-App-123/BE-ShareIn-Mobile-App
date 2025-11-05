@@ -2,10 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    exceptionFactory: (errors) => {
+      console.log('Validation Errors:', errors);
+      return new BadRequestException(errors);
+    },
+  }));
+
   
   const config = new DocumentBuilder()
     .setTitle('Auth API')

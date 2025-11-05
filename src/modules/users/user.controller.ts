@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Patch, Body, UseGuards, HttpStatus, UploadedFile, UseInterceptors, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UserService } from './user.service';
+import { UsersService } from './user.service';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { GetUserDto } from './dto/GetUser.dto';
 import { plainToInstance } from 'class-transformer';
@@ -17,7 +17,7 @@ import { type UserRequest } from '@common/interfaces/userRequest.interface'
 @ApiBearerAuth()
 export class UserController {
   constructor(
-    private readonly userService: UserService,
+    private readonly userService: UsersService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -25,7 +25,7 @@ export class UserController {
   @ApiOperation({ summary: 'Lấy thông tin chi tiết của một người dùng bất kỳ theo User ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Trả về thông tin người dùng thành công', type: GetUserDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy người dùng.' })
-  async findOne(@Req() request: UserRequest,): Promise<ApiResponseDto<GetUserDto>> {
+  async findOne(@Req() request: UserRequest): Promise<ApiResponseDto<GetUserDto>> {
     const user = await this.userService.findOne(request.user.userId);
 
     return new ApiResponseDto("Get user's infor succesfully", plainToInstance(GetUserDto, user));

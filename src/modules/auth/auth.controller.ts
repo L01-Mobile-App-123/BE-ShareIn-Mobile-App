@@ -5,6 +5,7 @@ import {
   Get,
   Req,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import axios from 'axios';
 import { type UserRequest } from '@common/interfaces/userRequest.interface'
@@ -58,21 +59,25 @@ export class AuthController {
   /**
    * Xác thực token Firebase (login hoặc verify)
    */
-  @UseGuards(FirebaseAuthGuard)
   @Post('verify')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify Firebase ID token' })
   @ApiResponse({ status: 200, description: 'Token is valid' })
   @ApiResponse({ status: 401, description: 'Invalid or expired token' })
   async verify(@Req() request: UserRequest): Promise<ApiResponseDto<{id: string, email: string, name: string}>> {
-    const decodedToken = request.user;
+    // Lấy token từ header (Vì không dùng Guard nên phải tự lấy)
+    const authHeader = request.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new UnauthorizedException('Missing or invalid Authorization header');
+    }
+    const token = authHeader.split(' ')[1];
 
-    const user = await this.authService.verifyToken(decodedToken);
-
+    const user = await this.authService.verifyToken(token);
+    
     return new ApiResponseDto('Verify user successfully', {
-      id: user.user_id,
-      email: user.email,
-      name: user.full_name,
+        id: user.user_id,
+        email: user.email,
+        name: user.full_name, // Giả sử tên là user.full_name
     });
   }
 

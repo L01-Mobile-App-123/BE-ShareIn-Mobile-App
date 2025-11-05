@@ -1,9 +1,26 @@
 import { Module } from '@nestjs/common';
-import { ChatController } from './chat.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatService } from './chat.service';
+import { ChatController } from './chat.controller';
+import { Conversation } from '@modules/entities/conversation.entity';
+import { Message } from '@modules/entities/message.entity';
+import { ChatGateway } from './chat.gateway';
+import { UsersModule } from '@modules/users/users.module'; 
+import { PostModule } from '@modules/post/post.module'; 
+import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard'
 
 @Module({
+  imports: [
+    TypeOrmModule.forFeature([Conversation, Message]),
+    UsersModule, 
+    PostModule,
+  ],
   controllers: [ChatController],
-  providers: [ChatService],
+  providers: [
+    ChatService,
+    ChatGateway,
+    FirebaseAuthGuard,
+  ],
+  exports: [ChatService]
 })
 export class ChatModule {}

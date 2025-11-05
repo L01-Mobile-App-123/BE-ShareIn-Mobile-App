@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { admin } from '@firebase/firebase-admin';
-import { UserService } from '@modules/users/user.service';
+import { UsersService } from '@modules/users/user.service';
 import { UserRecord, DecodedIdToken } from 'firebase-admin/auth';
 
 @Injectable()
 export class AuthService {
-  constructor(private userService: UserService) {}
+  constructor(private userService: UsersService) {}
 
   /**
    * Tạo custom token để test (không dùng trong thực tế)
@@ -18,18 +18,40 @@ export class AuthService {
   /**
    * Verify token và tự động tạo user mới nếu chưa có
    */
-  async verifyToken(decodedToken: DecodedIdToken) {
-    try {      
-      // Gán kiểu UserRecord cho an toàn
-      const firebaseUser: UserRecord = await admin.auth().getUser(decodedToken.uid);  
-      
-      // Logic này đã hoạt động chính xác với UserService đã sửa
-      const user = await this.userService.findOrCreateUser(firebaseUser);
-      
-      return user;
-    } catch (err) {
-      console.error('Error verifying Firebase token:', err);
-      throw new UnauthorizedException('Invalid or expired Firebase token');
+  async verifyToken(token: string) {
+    let decodedToken: DecodedIdToken;
+    let firebaseUser: UserRecord;
+
+    try {
+        // 1. Xác thực Token Firebase
+        decodedToken = await admin.auth().verifyIdToken(token);
+    } catch (error) {
+        // Bắt lỗi Token Firebase (hết hạn, không hợp lệ,...)
+        console.error('Firebase ID Token verification failed:', error.message);
+        throw new UnauthorizedException('Invalid or expired Firebase ID token');
+    }
+
+    try {
+        // 2. Lấy thông tin User Record đầy đủ từ Firebase
+        // Dùng uid từ decodedToken để lấy thông tin chi tiết hơn
+        firebaseUser = await admin.auth().getUser(decodedToken.uid); 
+    } catch (error) {
+        // Bắt lỗi nếu User không tồn tại trên Firebase (rất hiếm)
+        console.error('Firebase User Record retrieval failed:', error.message);
+        throw new UnauthorizedException('User not found on Firebase');
+    }
+
+    try {
+        // 3. Logic tìm hoặc tạo người dùng trong DB Local
+        // Giữ nguyên logic findOrCreateUser đã hoạt động chính xác
+        const user = await this.userService.findOrCreateUser(firebaseUser);
+        
+        return user; // Trả về entity User local
+    } catch (error) {
+        // Bắt lỗi trong quá trình xử lý DB Local
+        console.error('Error during findOrCreateUser:', error.message);
+        // Có thể custom exception cho lỗi DB nếu cần
+        throw new UnauthorizedException('Authentication failed due to local user processing error');
     }
   }
 

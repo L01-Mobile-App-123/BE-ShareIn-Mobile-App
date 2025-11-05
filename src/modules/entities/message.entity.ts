@@ -26,6 +26,9 @@ export class Message {
 
   @Column('text')
   content: string;
+  
+  @Column({ type: 'text', nullable: true })
+  last_message_content: string | null;
 
   @Column({
     type: 'enum',
@@ -34,11 +37,8 @@ export class Message {
   })
   message_type: MessageType;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'sent_at' })
   sent_at: Date;
-
-  @Column({ type: 'boolean', default: false })
-  is_read: boolean;
 
   // --- Quan hệ ---
 

@@ -3,7 +3,6 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
-  Inject,
 } from '@nestjs/common';
 import { admin } from '@firebase/firebase-admin'; // Firebase Admin SDK
 import { Repository } from 'typeorm';

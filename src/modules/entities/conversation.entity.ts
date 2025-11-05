@@ -7,17 +7,22 @@ import {
   JoinColumn,
   OneToMany,
   Index,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Message } from './message.entity';
+import { Post } from './post.entity'
 
 @Entity('conversations')
-// CẬP NHẬT: Đổi tên index
-@Index(['initiator_id', 'recipient_id'], { unique: true }) // Đảm bảo hội thoại là duy nhất
+@Index(['post_id', 'initiator_id', 'recipient_id'], { unique: true }) 
 export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   conversation_id: string;
 
+  @Index()
+  @Column('uuid')
+  post_id: string;
+  
   @Index()
   @Column('uuid')
   initiator_id: string;
@@ -26,14 +31,17 @@ export class Conversation {
   @Column('uuid')
   recipient_id: string;
 
+  @Column({ type: 'timestamp', nullable: true, default: null }) 
+  initiator_last_read: Date | null; 
+
+  @Column({ type: 'timestamp', nullable: true, default: null }) 
+  recipient_last_read: Date | null; 
+
   @CreateDateColumn()
   created_at: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ name: 'last_message_at', type: 'timestamp' }) 
   last_message_at: Date;
-
-  @Column({ type: 'boolean', default: true })
-  is_active: boolean;
 
   // --- Quan hệ ---
 
@@ -48,6 +56,10 @@ export class Conversation {
   })
   @JoinColumn({ name: 'recipient_id' })
   recipient: User;
+
+  @ManyToOne(() => Post, (post) => post.conversations, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'post_id' })
+  post: Post;
 
   @OneToMany(() => Message, (message) => message.conversation)
   messages: Message[];

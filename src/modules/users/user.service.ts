@@ -6,7 +6,7 @@ import { type UserRecord } from 'firebase-admin/auth';
 import { UpdateUserDto } from './dto/UpdateUser.dto'
 
 @Injectable()
-export class UserService {
+export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly repo: Repository<User>,
