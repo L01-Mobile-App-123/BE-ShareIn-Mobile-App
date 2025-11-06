@@ -4,20 +4,20 @@ import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 
 // DTO cho User đơn giản
 class SimpleUserDto {
-    @ApiProperty()
-    user_id: string;
-    @ApiProperty()
-    full_name: string;
-    @ApiPropertyOptional()
-    avatar_url: string;
+  @ApiProperty()
+  user_id: string;
+  @ApiProperty()
+  full_name: string;
+  @ApiPropertyOptional()
+  avatar_url: string;
 }
 
 // DTO cho Category đơn giản
 class SimpleCategoryDto {
-    @ApiProperty()
-    category_id: string;
-    @ApiProperty()
-    name: string;
+  @ApiProperty()
+  category_id: string;
+  @ApiProperty()
+  name: string;
 }
 
 @Exclude()

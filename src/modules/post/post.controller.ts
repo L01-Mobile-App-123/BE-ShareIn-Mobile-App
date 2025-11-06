@@ -1,16 +1,18 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, HttpStatus, UseGuards, Req, BadRequestException, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, HttpStatus, UseGuards, Req, BadRequestException, UseInterceptors, UploadedFiles, HttpCode } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/CreatePost.dto';
 import { UpdatePostDto } from './dto/UpdatePost.dto';
+import { CategoryDto } from './dto/Categories.dto'
 import { GetPostDto } from './dto/GetPost.dto';
 import { plainToInstance } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiConsumes, } from '@nestjs/swagger';
-import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard'
+import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { CloudinaryService } from '@modules/cloudinary/cloudinary.service';
-import { ApiResponseDto } from '@common/dto/api-response.dto'
-import { MultipleFilesUploadDto } from './dto/MultipleFilesUpload.dto'
-import { type UserRequest } from '@common/interfaces/userRequest.interface'
+import { ApiResponseDto } from '@common/dto/api-response.dto';
+import { MultipleFilesUploadDto } from './dto/MultipleFilesUpload.dto';
+import { type UserRequest } from '@common/interfaces/userRequest.interface';
+import { CategoryService } from '@modules/category/cateogry.service';
 
 @ApiTags('posts')
 @ApiBearerAuth()
@@ -20,7 +22,21 @@ export class PostController {
   constructor(
     private readonly postService: PostService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly categoryService: CategoryService,
   ) {}
+
+  @Get('categories')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({summary: 'Lấy danh sách tất cả Category',
+    description: 'Endpoint trả về toàn bộ danh sách Category hiện có trong hệ thống.'
+  })
+  @ApiResponse({ status: 200, description: 'Trả về thành công danh sách các Category.', type: [CategoryDto]})
+  @ApiResponse({ status: 500, description: 'Lỗi server nội bộ.'})
+  async getCategories(): Promise<ApiResponseDto<CategoryDto[]>> {
+    const categories = await this.categoryService.findAll();
+
+    return new ApiResponseDto("Get all categories", categories);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Tạo bài đăng mới (KHÔNG KÈM ẢNH). Cần cập nhật ảnh sau đó.' })

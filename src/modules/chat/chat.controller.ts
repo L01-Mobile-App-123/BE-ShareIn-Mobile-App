@@ -8,7 +8,8 @@ import {
   GetConversationsResponseDto
 } from './dto/chat.dto';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
-import { type UserRequest } from '@common/interfaces/userRequest.interface'; // Giả định path
+import { type UserRequest } from '@common/interfaces/userRequest.interface';
+import { ApiResponseDto } from '@common/dto/api-response.dto';
 
 @ApiTags('conversations')
 @Controller('conversations')
@@ -106,17 +107,17 @@ export class ChatController {
   }
 
   // DELETE /conversations/:id: Xóa hoặc ẩn hội thoại
-  @Delete(':id')
-  @ApiOperation({ summary: 'Xóa (Soft Delete/Ẩn) một Conversation khỏi danh sách của user hiện tại.' })
-  @ApiParam({ name: 'id', description: 'Conversation ID', type: 'string' })
-  @ApiResponse({ status: 200, description: 'Đánh dấu Conversation đã bị ẩn/xóa mềm thành công.' })
-  async remove(@Param('id') id: string, @Req() req: UserRequest) {
-    // Để hoàn thiện, bạn cần thêm logic soft delete/hide vào ChatService.
-    const userId = req.user.userId; 
+  // @Delete(':id')
+  // @ApiOperation({ summary: 'Xóa (Soft Delete/Ẩn) một Conversation khỏi danh sách của user hiện tại.' })
+  // @ApiParam({ name: 'id', description: 'Conversation ID', type: 'string' })
+  // @ApiResponse({ status: 200, description: 'Đánh dấu Conversation đã bị ẩn/xóa mềm thành công.' })
+  // async remove(@Param('id') id: string, @Req() req: UserRequest) {
+  //   // Để hoàn thiện, bạn cần thêm logic soft delete/hide vào ChatService.
+  //   const userId = req.user.userId; 
     
-    // Ví dụ về lỗi nếu chưa triển khai:
-    // throw new NotFoundException('Tính năng xóa/ẩn mềm chưa được triển khai.');
+  //   // Ví dụ về lỗi nếu chưa triển khai:
+  //   // throw new NotFoundException('Tính năng xóa/ẩn mềm chưa được triển khai.');
     
-    return { message: `Tính năng xóa/ẩn mềm cho conversation ${id} bởi user ${userId} cần triển khai trong ChatService.` };
-  }
+  //   return { message: `Tính năng xóa/ẩn mềm cho conversation ${id} bởi user ${userId} cần triển khai trong ChatService.` };
+  // }
 }
