@@ -1,4 +1,5 @@
 import { seedCategories } from './category.seed';
+import { seedUsers } from './user.seed';
 import { AppDataSource } from '@config/typeorm.config';
 
 async function runSeeder() {
@@ -6,6 +7,7 @@ async function runSeeder() {
   console.log('🌱 Database connected! Running seeders...');
 
   await seedCategories(dataSource);
+  await seedUsers(dataSource);
 
   await dataSource.destroy();
   console.log('🌾 Seeding complete!');

@@ -38,3 +38,45 @@ export class MessagePayload {
         username: string;
     };
 }
+
+// Payload trả về khi có thông báo đã đọc
+export class ReadReceiptPayload {
+    conversation_id: string;
+    user_id: string;
+    read_at: Date;
+}
+
+// Payload trả về khi user bắt đầu typing
+export class TypingPayload {
+    conversation_id: string;
+    user_id: string;
+    username: string;
+    is_typing: boolean;
+}
+
+// DTO cho sự kiện typing qua WebSocket
+export class WsTypingDto {
+    @IsUUID()
+    @IsNotEmpty()
+    conversationId: string;
+
+    @IsNotEmpty()
+    isTyping: boolean;
+}
+
+// Response payload chung cho WebSocket
+export class WsResponsePayload<T = any> {
+    event: string;
+    data: T;
+    timestamp: Date;
+    success: boolean;
+    message?: string;
+}
+
+// Error payload cho WebSocket
+export class WsErrorPayload {
+    event: string;
+    error: string;
+    message: string;
+    timestamp: Date;
+}

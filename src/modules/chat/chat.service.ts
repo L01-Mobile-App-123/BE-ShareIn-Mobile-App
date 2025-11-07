@@ -154,6 +154,21 @@ export class ChatService {
   }
 
   /**
+   * Lấy lịch sử tin nhắn kèm tổng số (phục vụ phân trang)
+   */
+  async getMessagesPaginated(conversationId: string, page: number = 1, limit: number = 50): Promise<{ data: Message[]; total: number }> {
+    const [data, total] = await this.messageRepository.findAndCount({
+      where: { conversation_id: conversationId },
+      order: { sent_at: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+      relations: ['sender'],
+    });
+
+    return { data, total };
+  }
+
+  /**
    * Đánh dấu cuộc trò chuyện đã đọc (cập nhật last_read)
    */
   async markConversationAsRead(userId: string, conversationId: string): Promise<void> {

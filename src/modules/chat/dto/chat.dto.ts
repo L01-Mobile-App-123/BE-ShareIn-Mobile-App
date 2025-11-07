@@ -88,3 +88,99 @@ export class GetConversationsResponseDto {
 }
 
 export class ConversationResponseDto extends GetConversationsResponseDto {}
+
+// --- DTO cho Response của findOrCreate ---
+export class FindOrCreateConversationResponseDto {
+  @ApiProperty({ 
+    example: 'd19c3c5d-85d8-4a9f-a0c0-6d9b4b0e5b3e',
+    description: 'ID của conversation vừa tạo hoặc đã tồn tại'
+  })
+  conversation_id: string;
+
+  @ApiProperty({ 
+    example: 'Tạo cuộc trò chuyện mới thành công',
+    description: 'Thông báo trạng thái (tạo mới hoặc đã tồn tại)'
+  })
+  message: string;
+}
+
+// --- DTO cho Response phân trang Messages ---
+export class PaginatedMessagesResponseDto {
+  @ApiProperty({ 
+    type: [MessageResponseDto],
+    description: 'Danh sách tin nhắn trong trang hiện tại'
+  })
+  data: MessageResponseDto[];
+
+  @ApiProperty({ 
+    example: 1,
+    description: 'Trang hiện tại'
+  })
+  page: number;
+
+  @ApiProperty({ 
+    example: 20,
+    description: 'Số lượng tin nhắn mỗi trang'
+  })
+  limit: number;
+
+  @ApiProperty({ 
+    example: 156,
+    description: 'Tổng số tin nhắn'
+  })
+  total: number;
+
+  @ApiProperty({ 
+    example: 8,
+    description: 'Tổng số trang'
+  })
+  totalPages: number;
+
+  @ApiProperty({ 
+    example: true,
+    description: 'Còn trang tiếp theo hay không'
+  })
+  hasNextPage: boolean;
+
+  @ApiProperty({ 
+    example: false,
+    description: 'Có trang trước hay không'
+  })
+  hasPreviousPage: boolean;
+}
+
+// --- DTO cho Query Parameters ---
+export class GetMessagesQueryDto {
+  @ApiProperty({ 
+    example: 1,
+    description: 'Số trang (mặc định là 1)',
+    required: false,
+    default: 1
+  })
+  @IsOptional()
+  page?: number;
+
+  @ApiProperty({ 
+    example: 20,
+    description: 'Số lượng tin nhắn mỗi trang (mặc định là 20)',
+    required: false,
+    default: 20
+  })
+  @IsOptional()
+  limit?: number;
+}
+
+// --- DTO cho Mark as Read Response ---
+export class MarkAsReadResponseDto {
+  @ApiProperty({ 
+    example: true,
+    description: 'Trạng thái cập nhật thành công'
+  })
+  success: boolean;
+
+  @ApiProperty({ 
+    example: 'Đã đánh dấu tất cả tin nhắn là đã đọc',
+    description: 'Thông báo kết quả'
+  })
+  message: string;
+}
