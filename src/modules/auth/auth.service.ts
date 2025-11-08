@@ -1,17 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { admin } from '@firebase/firebase-admin';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { FIREBASE_AUTH } from '@firebase/firebase.constants';
+import type { Auth } from 'firebase-admin/auth';
 import { UsersService } from '@modules/users/user.service';
 import { UserRecord, DecodedIdToken } from 'firebase-admin/auth';
 
 @Injectable()
 export class AuthService {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    @Inject(FIREBASE_AUTH) private readonly auth: Auth,
+  ) {}
 
   /**
    * Tạo custom token để test (không dùng trong thực tế)
    */
   async createTestToken(uid: string, email: string) { // Sửa: String -> string
-    const customToken = await admin.auth().createCustomToken(uid, { email });
+    const customToken = await this.auth.createCustomToken(uid, { email });
     return { customToken };
   }
 
@@ -24,7 +28,7 @@ export class AuthService {
 
     try {
         // 1. Xác thực Token Firebase
-        decodedToken = await admin.auth().verifyIdToken(token);
+        decodedToken = await this.auth.verifyIdToken(token);
     } catch (error) {
         // Bắt lỗi Token Firebase (hết hạn, không hợp lệ,...)
         console.error('Firebase ID Token verification failed:', error.message);
@@ -34,7 +38,7 @@ export class AuthService {
     try {
         // 2. Lấy thông tin User Record đầy đủ từ Firebase
         // Dùng uid từ decodedToken để lấy thông tin chi tiết hơn
-        firebaseUser = await admin.auth().getUser(decodedToken.uid); 
+        firebaseUser = await this.auth.getUser(decodedToken.uid);
     } catch (error) {
         // Bắt lỗi nếu User không tồn tại trên Firebase (rất hiếm)
         console.error('Firebase User Record retrieval failed:', error.message);
@@ -60,7 +64,7 @@ export class AuthService {
    */
   async logout(uid: string) {
     try {
-      await admin.auth().revokeRefreshTokens(uid);
+      await this.auth.revokeRefreshTokens(uid);
       return 'User logged out successfully';
     } catch (err) {
       console.error('Error revoking refresh tokens:', err);

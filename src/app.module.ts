@@ -4,10 +4,11 @@ import { AppService } from './app.service';
 import { PostModule } from '@modules/post/post.module';
 import { SearchModule } from '@modules/search/search.module';
 import { ChatModule } from '@modules/chat/chat.module';
-import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { NotificationModule } from '@modules/notifications/notification.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { UsersModule } from '@modules/users/users.module';
 import { AppConfigModule } from '@config/config.module';
+import { FirebaseModule } from '@firebase/firebase.module'
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
@@ -34,9 +35,10 @@ import { ConfigService } from '@nestjs/config';
     PostModule,
     SearchModule,
     ChatModule,
-    NotificationsModule,
+    NotificationModule,
     AuthModule,
     UsersModule,
+    FirebaseModule
   ],
   controllers: [AppController],
   providers: [AppService],
