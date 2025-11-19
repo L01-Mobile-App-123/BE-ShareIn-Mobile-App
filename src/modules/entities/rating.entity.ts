@@ -16,14 +16,14 @@ export class Rating {
 
   @Index()
   @Column('uuid')
-  rater_id: string; // Người đánh giá
+  rater_id: string;
 
   @Index()
   @Column('uuid')
-  rated_user_id: string; // Người được đánh giá
+  rated_user_id: string;
 
-  @Column({ type: 'boolean' }) // true = positive, false = negative
-  is_positive: boolean;
+  @Column({ type: 'int' })
+  rating_score: number; // 1-5 sao
 
   @Column({ type: 'text', nullable: true })
   comment: string;
@@ -35,7 +35,6 @@ export class Rating {
   created_at: Date;
 
   // --- Quan hệ ---
-
   @ManyToOne(() => User, (user) => user.ratings_given, {
     onDelete: 'SET NULL',
   })

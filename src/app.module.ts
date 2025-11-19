@@ -1,4 +1,3 @@
-import { UserInterest } from './modules/entities/user-interest.entity';
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -12,6 +11,7 @@ import { RatingModule } from '@modules/rating/rating.module';
 import { UserInterestModule } from '@modules/user-interest/user-interest.module'
 import { AppConfigModule } from '@config/config.module';
 import { FirebaseModule } from '@firebase/firebase.module'
+import { RatingSubscriber } from '@modules/subscribers/rating.subscriber';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
@@ -46,6 +46,6 @@ import { ConfigService } from '@nestjs/config';
     FirebaseModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, RatingSubscriber],
 })
 export class AppModule {}

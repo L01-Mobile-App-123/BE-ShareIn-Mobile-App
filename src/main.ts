@@ -1,32 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common'
+import { SwaggerModule } from '@nestjs/swagger';
+import { corsConfig } from '@config/cors.config';
+import { swaggerConfig, swaggerOptions } from '@config/swagger.config';
+import { validationConfig } from '@config/validation.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // CORS
+  app.enableCors(corsConfig);
+
+  // Global Prefix
   app.setGlobalPrefix('api/v1');
-  app.useGlobalPipes(new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    exceptionFactory: (errors) => {
-      console.log('Validation Errors:', errors);
-      return new BadRequestException(errors);
-    },
-  }));
 
-  
-  const config = new DocumentBuilder()
-    .setTitle('Auth API')
-    .setDescription('Authentication endpoints using Firebase + NestJS')
-    .setVersion('1.0')
-    .addBearerAuth() // thêm header Authorization: Bearer
-    .build();
+  // Validation
+  app.useGlobalPipes(new ValidationPipe(validationConfig));
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, swaggerOptions);
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
   
-  await app.listen(process.env.PORT ?? 3000);
+  // console.log(`🚀 Server is running on: http://localhost:${port}`);
+  // console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
 }
+
 bootstrap();
