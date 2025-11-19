@@ -68,6 +68,26 @@ export class PostController {
     return new ApiResponseDto("Upload post's images sucessfully", plainToInstance(GetPostDto, updatedPost)); 
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Lấy danh sách bài đăng của người dùng hiện tại' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Danh sách bài đăng của user.', type: [GetPostDto] })
+  @ApiQuery({ name: 'page', description: 'Trang cần lấy (mặc định là 1)', required: false, type: 'number' })
+  @ApiQuery({ name: 'limit', description: 'Số bài post mỗi trang (mặc định là 20)', required: false, type: 'number' })
+  async getMyPosts(
+    @Req() req: UserRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<ApiResponseDto<{data: GetPostDto[], total: number, page: number, limit: number}>> {
+    const { data, total } = await this.postService.findByUser(req.user.userId, page, limit);
+    
+    return new ApiResponseDto("Get my posts", {
+      data: plainToInstance(GetPostDto, data),
+      total: total,
+      page: page,
+      limit: limit,
+    });
+  }
+
   @Get(':postId')
   @ApiOperation({ summary: 'Xem chi tiết một bài đăng' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Chi tiết bài đăng.', type: GetPostDto })

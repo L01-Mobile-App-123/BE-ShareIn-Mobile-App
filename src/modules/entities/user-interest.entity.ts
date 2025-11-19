@@ -22,6 +22,9 @@ export class UserInterest {
   @Column('uuid')
   category_id: string;
 
+  @Column({ type: 'simple-array', nullable: true })
+  keywords: string[]; 
+
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 

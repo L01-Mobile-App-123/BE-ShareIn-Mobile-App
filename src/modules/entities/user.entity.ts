@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   OneToMany,
   Index,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Post } from './post.entity';
 import { Conversation } from './conversation.entity';
@@ -67,6 +69,24 @@ export class User {
   updated_at: Date;
 
   // --- Quan hệ ---
+
+  @ManyToMany(() => User, (user) => user.blockedBy)
+  @JoinTable({
+    name: 'user_blocks', // Tên bảng phụ
+    joinColumn: {
+      name: 'blocker_id',
+      referencedColumnName: 'user_id',
+    },
+    inverseJoinColumn: {
+      name: 'blocked_id',
+      referencedColumnName: 'user_id',
+    },
+  })
+  blockedUsers: User[];
+
+  // Danh sách những người ĐÃ chặn user này
+  @ManyToMany(() => User, (user) => user.blockedUsers)
+  blockedBy: User[];
 
   @OneToMany(() => Post, (post) => post.user)
   posts: Post[];

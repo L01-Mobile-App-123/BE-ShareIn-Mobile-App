@@ -108,8 +108,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 ? conversation.initiator 
                 : conversation.recipient;
             
-            // Kiểm tra senderRelation có bị null/undefined không (do TypeORM relations có thể lazy-loaded hoặc null)
-            const senderUsername = senderRelation?.full_name ?? 'System User';
+            // Kiểm tra senderRelation có bị null/undefined không
+            const senderFullName = senderRelation?.full_name ?? 'System User';
+            const senderAvatar = senderRelation?.avatar_url; // Lấy thêm avatar
             
             const payload: MessagePayload = {
                 message_id: message.message_id,
@@ -119,8 +120,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 message_type: message.message_type,
                 sent_at: message.sent_at,
                 sender: { 
-                    userId: senderId, 
-                    username: senderUsername 
+                    user_id: senderId,          // Sửa userId -> user_id
+                    full_name: senderFullName,  // Sửa username -> full_name
+                    avatar_url: senderAvatar    // Thêm avatar
                 },
             };
 

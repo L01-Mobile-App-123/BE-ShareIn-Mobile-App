@@ -107,6 +107,18 @@ export class PostService {
       return this.postsRepository.save(post);
   }
 
+  async findByUser(user_id: string, page = 1, limit = 20): Promise<{ data: Post[], total: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.postsRepository.findAndCount({
+      where: { user_id },
+      relations: ['category'],
+      take: limit,
+      skip: skip,
+      order: { created_at: 'DESC' },
+    });
+    return { data, total};
+  }
+    
   async softDeleteOrHide(post_id: string, user_id: string, action: 'hide' | 'delete'): Promise<{ message: string }> {
     const post = await this.postsRepository.findOne({ where: { post_id } });
 

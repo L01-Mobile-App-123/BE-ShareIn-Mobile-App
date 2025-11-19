@@ -12,7 +12,6 @@ import {
 import { User } from './user.entity';
 import { Category } from './category.entity';
 import { Notification } from './notification.entity';
-import { Conversation } from './conversation.entity'
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 
 @Entity('posts')
@@ -76,9 +75,6 @@ export class Post {
   })
   @JoinColumn({ name: 'category_id' })
   category: Category;
-
-  @OneToMany(() => Conversation, (conversation) => conversation.post)
-  conversations: Conversation[];
 
   @OneToMany(() => Notification, (notification) => notification.post)
   notifications: Notification[];

@@ -34,8 +34,9 @@ export class MessagePayload {
     message_type: MessageType;
     sent_at: Date;
     sender: {
-        userId: string;
-        username: string;
+        user_id: string;    
+        full_name: string;  
+        avatar_url?: string;
     };
 }
 
@@ -50,7 +51,7 @@ export class ReadReceiptPayload {
 export class TypingPayload {
     conversation_id: string;
     user_id: string;
-    username: string;
+    full_name: string;
     is_typing: boolean;
 }
 

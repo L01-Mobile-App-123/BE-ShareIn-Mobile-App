@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, UseGuards, Req, Query, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, HttpCode, UseGuards, Req, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatMapperService } from './chat.mapper.service';
@@ -10,7 +10,9 @@ import {
   FindOrCreateConversationResponseDto,
   PaginatedMessagesResponseDto,
   GetMessagesQueryDto,
-  MarkAsReadResponseDto
+  MarkAsReadResponseDto,
+  BlockUserDto,
+  BlockUserResponseDto
 } from './dto/chat.dto';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { type UserRequest } from '@common/interfaces/userRequest.interface';
@@ -26,14 +28,12 @@ export class ChatController {
     private readonly chatMapper: ChatMapperService,
   ) {}
   
-  
-  // POST /conversations: Tạo hoặc lấy hội thoại
   @Post()
-  @ApiOperation({ summary: 'Tạo hoặc lấy Conversation giữa hai user trong ngữ cảnh một Post' })
+  @ApiOperation({ summary: 'Tạo hoặc lấy Conversation giữa hai user (Chat 1-1)' })
   @ApiBody({ type: FindOrCreateConversationDto })
   @ApiResponse({ 
     status: 200, 
-    description: 'Trả về Conversation ID và trạng thái (tạo mới/đã tồn tại).',
+    description: 'Trả về Conversation ID và trạng thái.',
     type: FindOrCreateConversationResponseDto
   })
   @ApiResponse({ status: 409, description: 'Conflict: Người dùng đang cố tự chat với chính mình.' })
@@ -60,25 +60,23 @@ export class ChatController {
     );
   }
 
-  // GET /conversations: Lấy danh sách hội thoại
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách tất cả Conversation của người dùng hiện tại' })
+  @ApiOperation({ summary: 'Lấy danh sách tất cả cuộc trò chuyện của người dùng hiện tại' })
   @ApiResponse({ 
     status: 200, 
-    type: GetConversationsResponseDto,
-    description: 'Danh sách Conversation kèm tin nhắn cuối và số tin chưa đọc.' 
+    type: [GetConversationsResponseDto],
+    description: 'Danh sách Conversation kèm thông tin đối phương và tin nhắn cuối.' 
   })
   async findAll(@Req() req: UserRequest): Promise<ApiResponseDto<GetConversationsResponseDto[]>> {
     const currentUserId = req.user.userId;
     const conversations = await this.chatService.getConversations(currentUserId);
-  const mapped = conversations.map((c) => this.chatMapper.mapConversationToDto(c, currentUserId));
+    const mapped = conversations.map((c) => this.chatMapper.mapConversationToDto(c, currentUserId));
     return new ApiResponseDto<GetConversationsResponseDto[]>(
       'Lấy danh sách cuộc trò chuyện thành công',
       mapped,
     );
   }
   
-  // GET /conversations/:id/messages: Lấy lịch sử tin nhắn
   @Get(':id/messages')
   @ApiOperation({ summary: 'Lấy lịch sử tin nhắn chi tiết của một Conversation (Phân trang)' })
   @ApiParam({ name: 'id', description: 'Conversation ID', type: 'string' })
@@ -89,15 +87,15 @@ export class ChatController {
     type: PaginatedMessagesResponseDto,
     description: 'Danh sách tin nhắn phân trang.' 
   })
-  @ApiResponse({ status: 404, description: 'Conversation không tồn tại.' })
   async getMessages(
     @Param('id') conversationId: string,
     @Query() queryDto: GetMessagesQueryDto,
   ): Promise<ApiResponseDto<PaginatedMessagesResponseDto>> {
-    const { page = 20, limit = 1 } = queryDto;
+    const { page = 1, limit = 20 } = queryDto;
     const { data, total } = await this.chatService.getMessagesPaginated(conversationId, page, limit);
     const items = data.map((m) => this.chatMapper.mapMessageToDto(m));
     const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
+    
     const paginated: PaginatedMessagesResponseDto = {
       data: items,
       page,
@@ -114,41 +112,37 @@ export class ChatController {
     );
   }
   
-  // POST /conversations/messages: Gửi tin nhắn mới (REST fallback)
   @Post('messages')
   @HttpCode(201)
-  @ApiOperation({ summary: 'Gửi tin nhắn mới (REST fallback/non-realtime)', description: 'Trong ứng dụng mobile, chức năng này thường được thay thế bằng WebSocket.' })
+  @ApiOperation({ summary: 'Gửi tin nhắn mới (REST fallback)' })
   @ApiBody({ type: CreateMessageDto })
   @ApiResponse({ 
     status: 201, 
     type: MessageResponseDto,
-    description: 'Tin nhắn đã được tạo và lưu vào DB.' 
+    description: 'Tin nhắn đã được tạo.' 
   })
-  @ApiResponse({ status: 404, description: 'Conversation không tồn tại.' })
   async createMessage(
     @Body() createMessageDto: CreateMessageDto,
     @Req() req: UserRequest,
   ): Promise<ApiResponseDto<MessageResponseDto>> {
     const senderId = req.user.userId;
     const message = await this.chatService.createMessage(senderId, createMessageDto);
-  const mapped = this.chatMapper.mapMessageToDto(message);
+    const mapped = this.chatMapper.mapMessageToDto(message);
     return new ApiResponseDto<MessageResponseDto>(
       'Gửi tin nhắn thành công',
       mapped,
     );
   }
   
-  // PATCH /conversations/:id/read: Đánh dấu cuộc trò chuyện đã đọc
   @Patch(':id/read')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Đánh dấu tất cả tin nhắn trong Conversation là đã đọc cho user hiện tại.' })
+  @ApiOperation({ summary: 'Đánh dấu tất cả tin nhắn trong Conversation là đã đọc' })
   @ApiParam({ name: 'id', description: 'Conversation ID', type: 'string' })
   @ApiResponse({ 
     status: 200, 
     type: MarkAsReadResponseDto,
     description: 'Cập nhật thành công.' 
   })
-  @ApiResponse({ status: 404, description: 'Conversation không tồn tại.' })
   async markAsRead(
     @Param('id') conversationId: string,
     @Req() req: UserRequest,
@@ -164,18 +158,53 @@ export class ChatController {
     );
   }
 
-  // DELETE /conversations/:id: Xóa hoặc ẩn hội thoại
-  // @Delete(':id')
-  // @ApiOperation({ summary: 'Xóa (Soft Delete/Ẩn) một Conversation khỏi danh sách của user hiện tại.' })
-  // @ApiParam({ name: 'id', description: 'Conversation ID', type: 'string' })
-  // @ApiResponse({ status: 200, description: 'Đánh dấu Conversation đã bị ẩn/xóa mềm thành công.' })
-  // async remove(@Param('id') id: string, @Req() req: UserRequest) {
-  //   // Để hoàn thiện, bạn cần thêm logic soft delete/hide vào ChatService.
-  //   const userId = req.user.userId; 
+  @Post('block')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chặn người dùng (Block)' })
+  @ApiBody({ type: BlockUserDto })
+  @ApiResponse({ 
+    status: 200, 
+    type: BlockUserResponseDto,
+    description: 'Chặn thành công.' 
+  })
+  async blockUser(
+    @Body() dto: BlockUserDto,
+    @Req() req: UserRequest,
+  ): Promise<ApiResponseDto<BlockUserResponseDto>> {
+    const currentUserId = req.user.userId;
+    await this.chatService.blockUser(currentUserId, dto.target_user_id);
     
-  //   // Ví dụ về lỗi nếu chưa triển khai:
-  //   // throw new NotFoundException('Tính năng xóa/ẩn mềm chưa được triển khai.');
+    return new ApiResponseDto<BlockUserResponseDto>(
+      'Chặn người dùng thành công',
+      {
+        success: true,
+        message: 'Đã chặn người dùng này. Bạn sẽ không nhận được tin nhắn từ họ nữa.',
+      },
+    );
+  }
+
+  @Post('unblock')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Bỏ chặn người dùng (Unblock)' })
+  @ApiBody({ type: BlockUserDto })
+  @ApiResponse({ 
+    status: 200, 
+    type: BlockUserResponseDto,
+    description: 'Bỏ chặn thành công.' 
+  })
+  async unblockUser(
+    @Body() dto: BlockUserDto,
+    @Req() req: UserRequest,
+  ): Promise<ApiResponseDto<BlockUserResponseDto>> {
+    const currentUserId = req.user.userId;
+    await this.chatService.unblockUser(currentUserId, dto.target_user_id);
     
-  //   return { message: `Tính năng xóa/ẩn mềm cho conversation ${id} bởi user ${userId} cần triển khai trong ChatService.` };
-  // }
+    return new ApiResponseDto<BlockUserResponseDto>(
+      'Bỏ chặn người dùng thành công',
+      {
+        success: true,
+        message: 'Đã bỏ chặn người dùng này.',
+      },
+    );
+  }
 }

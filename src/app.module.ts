@@ -1,3 +1,4 @@
+import { UserInterest } from './modules/entities/user-interest.entity';
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -7,6 +8,8 @@ import { ChatModule } from '@modules/chat/chat.module';
 import { NotificationModule } from '@modules/notifications/notification.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { UsersModule } from '@modules/users/users.module';
+import { RatingModule } from '@modules/rating/rating.module';
+import { UserInterestModule } from '@modules/user-interest/user-interest.module'
 import { AppConfigModule } from '@config/config.module';
 import { FirebaseModule } from '@firebase/firebase.module'
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -38,6 +41,8 @@ import { ConfigService } from '@nestjs/config';
     NotificationModule,
     AuthModule,
     UsersModule,
+    RatingModule,
+    UserInterestModule,
     FirebaseModule
   ],
   controllers: [AppController],

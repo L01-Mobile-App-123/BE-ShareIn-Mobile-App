@@ -11,17 +11,12 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Message } from './message.entity';
-import { Post } from './post.entity'
 
 @Entity('conversations')
-@Index(['post_id', 'initiator_id', 'recipient_id'], { unique: true }) 
+@Index(['initiator_id', 'recipient_id'], { unique: true }) 
 export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   conversation_id: string;
-
-  @Index()
-  @Column('uuid')
-  post_id: string;
   
   @Index()
   @Column('uuid')
@@ -56,10 +51,6 @@ export class Conversation {
   })
   @JoinColumn({ name: 'recipient_id' })
   recipient: User;
-
-  @ManyToOne(() => Post, (post) => post.conversations, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'post_id' })
-  post: Post;
 
   @OneToMany(() => Message, (message) => message.conversation)
   messages: Message[];
