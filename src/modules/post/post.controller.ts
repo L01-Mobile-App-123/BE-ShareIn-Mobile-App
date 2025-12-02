@@ -3,7 +3,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { CategoryDto } from './dto/categories.dto';
+import { CategoryDto } from './dto/category.dto';
 import { GetPostDto } from './dto/get-post.dto';
 import { MultipleFilesUploadDto } from './dto/multiple-files-upload.dto';
 import { plainToInstance } from 'class-transformer';
