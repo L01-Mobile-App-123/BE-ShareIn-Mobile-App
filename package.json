@@ -9,6 +9,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/main.seeder.ts",
+    "seed:prod": "node dist/database/seeds/main.seeder.js",
     "start": "node --max_old_space_size=256 dist/main.js",
     "start:dev": "nest start --watch -r tsconfig-paths/register",
     "start:debug": "nest start --debug --watch",
