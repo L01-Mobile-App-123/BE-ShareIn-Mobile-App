@@ -21,17 +21,15 @@ import { ConfigService } from '@nestjs/config';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const db = config.get('database');
+        const databaseUrl = config.get('database.url');
+        const databaseSchema = config.get('database.schema');
         return {
-          type: db.type,
-          host: db.host,
-          port: db.port,
-          username: db.username,
-          password: db.password,
-          database: db.name,
+          type: 'postgres',
+          url: databaseUrl,
           entities: [__dirname + '/**/entities/*{.ts,.js}'],
-          synchronize: config.get('nodeEnv') !== 'production',
+          synchronize: true,
           autoLoadEntities: true,
+          schema: databaseSchema,
         };
       },
     }),
