@@ -2,8 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '@modules/entities/post.entity'; 
-import { CreatePostDto } from './dto/CreatePost.dto';
-import { UpdatePostDto } from './dto/UpdatePost.dto';
+import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 
 @Injectable()
@@ -25,7 +25,8 @@ export class PostService {
       image_urls: [], // Khởi tạo mảng rỗng, sẽ được cập nhật sau khi upload
     });
 
-    return this.postsRepository.save(newPost);
+    const savedPost = await this.postsRepository.save(newPost);
+    return savedPost;
   }
 
   async findOne(post_id: string): Promise<Post> {

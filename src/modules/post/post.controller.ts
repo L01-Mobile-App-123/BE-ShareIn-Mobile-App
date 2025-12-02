@@ -1,16 +1,16 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, HttpStatus, UseGuards, Req, BadRequestException, UseInterceptors, UploadedFiles, HttpCode } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
-import { CreatePostDto } from './dto/CreatePost.dto';
-import { UpdatePostDto } from './dto/UpdatePost.dto';
-import { CategoryDto } from './dto/Categories.dto'
-import { GetPostDto } from './dto/GetPost.dto';
+import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
+import { CategoryDto } from './dto/categories.dto';
+import { GetPostDto } from './dto/get-post.dto';
+import { MultipleFilesUploadDto } from './dto/multiple-files-upload.dto';
 import { plainToInstance } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiConsumes, } from '@nestjs/swagger';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { CloudinaryService } from '@modules/cloudinary/cloudinary.service';
 import { ApiResponseDto } from '@common/dto/api-response.dto';
-import { MultipleFilesUploadDto } from './dto/MultipleFilesUpload.dto';
 import { type UserRequest } from '@common/interfaces/userRequest.interface';
 import { CategoryService } from '@modules/category/cateogry.service';
 
