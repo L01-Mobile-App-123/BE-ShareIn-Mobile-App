@@ -16,7 +16,9 @@ const firebaseAppProvider = {
       'FIREBASE_SERVICE_ACCOUNT_PATH',
     );
     
-    const serviceAccount = require(serviceAccountPath?? "");
+    const path = require('path');
+    const resolvedPath = path.resolve(process.cwd(), serviceAccountPath ?? "");
+    const serviceAccount = require(resolvedPath);
     
     if (admin.apps.length === 0) {
       admin.initializeApp({

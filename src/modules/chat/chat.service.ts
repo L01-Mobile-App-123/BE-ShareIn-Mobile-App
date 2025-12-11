@@ -1,6 +1,6 @@
-import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, MoreThan } from 'typeorm';
 import { Conversation } from '@modules/entities/conversation.entity';
 import { Message } from '@modules/entities/message.entity';
 import { FindOrCreateConversationDto, CreateMessageDto } from './dto/chat.dto';
@@ -112,11 +112,6 @@ export class ChatService {
         ? conversation.recipient_id 
         : conversation.initiator_id;
 
-    // Kiểm tra chặn
-    const isBlocked = await this.checkBlockRelation(senderId, recipientId);
-    if (isBlocked) {
-        throw new ForbiddenException('Không thể gửi tin nhắn do có chặn từ một trong hai phía.');
-    }
 
     // ... (phần còn lại giữ nguyên)
     const message = this.messageRepository.create({
@@ -128,15 +123,21 @@ export class ChatService {
 
     await this.messageRepository.save(message);
 
-    const now = message.sent_at;
-    await this.conversationRepository.update(conversation_id, {
+    // Reload saved message with sender relation so mapper can access sender.user_id
+    const savedMessage = await this.messageRepository.findOne({
+      where: { message_id: message.message_id },
+      relations: ['sender'],
+    });
+
+    const now = (savedMessage || message).sent_at;
+    await this.conversationRepository.update({ conversation_id }, {
       last_message_at: now,
       ...(conversation.initiator_id === senderId 
           ? { initiator_last_read: now }
           : { recipient_last_read: now }),
     });
     
-    return message;
+    return savedMessage || message;
   }
   
   /**
@@ -171,8 +172,17 @@ export class ChatService {
    * Đánh dấu cuộc trò chuyện đã đọc (cập nhật last_read)
    */
   async markConversationAsRead(userId: string, conversationId: string): Promise<void> {
+    // Trim potential leading/trailing whitespace (clients may send URL-encoded spaces)
+    const trimmedId = (conversationId || '').trim();
+
+    // Basic UUID v4 format validation
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidRegex.test(trimmedId)) {
+      throw new BadRequestException('Invalid conversation id');
+    }
+
     const conversation = await this.conversationRepository.findOne({
-        where: { conversation_id: conversationId }
+        where: { conversation_id: trimmedId }
     });
 
     if (!conversation) {
@@ -190,7 +200,7 @@ export class ChatService {
         throw new ConflictException('Bạn không thuộc cuộc trò chuyện này.');
     }
 
-    await this.conversationRepository.update(conversationId, updateObject);
+    await this.conversationRepository.update({ conversation_id: conversationId }, updateObject);
   }
   
   /**
@@ -202,98 +212,69 @@ export class ChatService {
         ? conversation.initiator_last_read 
         : conversation.recipient_last_read;
     
-    // Nếu tin nhắn cuối cùng mới hơn thời điểm đọc cuối cùng
-    if (!lastReadTime || conversation.last_message_at > lastReadTime) {
+    // Nếu không có thời điểm đọc trước đó: đếm tất cả tin nhắn do người khác gửi
+    if (!lastReadTime) {
       return this.messageRepository.count({
-          where: {
-              conversation_id: conversation.conversation_id,
-              sender_id: Not(userId), // Tin nhắn gửi bởi người khác
-              ...(lastReadTime && { sent_at: Not(lastReadTime) }) // Tin nhắn sau thời điểm đọc cuối cùng
-          },
+        where: {
+          conversation_id: conversation.conversation_id,
+          sender_id: Not(userId),
+        },
       });
     }
-    
+
+    // Nếu có lastReadTime: đếm tin nhắn được gửi sau lastReadTime bởi người khác
+    if (conversation.last_message_at > lastReadTime) {
+      return this.messageRepository.count({
+        where: {
+          conversation_id: conversation.conversation_id,
+          sender_id: Not(userId),
+          sent_at: MoreThan(lastReadTime),
+        },
+      });
+    }
+
     return 0;
   }
 
   /**
-   * Chặn người dùng
+   * Hoàn thành/Xác nhận giao dịch
    */
-  async blockUser(blockerId: string, blockedId: string): Promise<void> {
-    if (blockerId === blockedId) {
-      throw new ConflictException('Không thể tự chặn chính mình');
-    }
-
-    const blocker = await this.userRepository.findOne({
-      where: { user_id: blockerId },
-      relations: ['blockedUsers'],
+  async completeTransaction(
+    conversationId: string,
+    userId: string,
+    finalPrice?: number,
+    notes?: string,
+  ): Promise<{ conversation_id: string; status: string; completed_at: Date; message: string }> {
+    const conversation = await this.conversationRepository.findOne({
+      where: { conversation_id: conversationId },
     });
 
-    if (!blocker) {
-      throw new NotFoundException('Người dùng thực hiện chặn không tồn tại');
+    if (!conversation) {
+      throw new NotFoundException('Không tìm thấy cuộc trò chuyện.');
     }
 
-    const blocked = await this.userRepository.findOne({ where: { user_id: blockedId } });
-    if (!blocked) throw new NotFoundException('Người dùng bị chặn không tồn tại');
-
-    // Kiểm tra xem đã chặn chưa
-    if (!blocker.blockedUsers) {
-        blocker.blockedUsers = [];
+    // Kiểm tra user có phải là một trong hai người trong cuộc trò chuyện không
+    if (conversation.initiator_id !== userId && conversation.recipient_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền thực hiện hành động này.');
     }
 
-    const isAlreadyBlocked = blocker.blockedUsers.some(u => u.user_id === blockedId);
-    if (isAlreadyBlocked) {
-      throw new ConflictException('Bạn đã chặn người dùng này rồi');
-    }
-
-    blocker.blockedUsers.push(blocked);
-    await this.userRepository.save(blocker);
-  }
-
-  /**
-   * Bỏ chặn người dùng
-   */
-  async unblockUser(blockerId: string, blockedId: string): Promise<void> {
-    const blocker = await this.userRepository.findOne({
-      where: { user_id: blockerId },
-      relations: ['blockedUsers'],
+    // Tạo tin nhắn xác nhận giao dịch
+    const confirmationMessage = this.messageRepository.create({
+      conversation_id: conversationId,
+      sender_id: userId,
+      content: notes || '✅ Giao dịch đã hoàn thành',
+      message_type: MessageType.TEXT,
     });
 
-    if (!blocker) {
-      throw new NotFoundException('Người dùng thực hiện bỏ chặn không tồn tại');
-    }
+    await this.messageRepository.save(confirmationMessage);
 
-    if (!blocker.blockedUsers) {
-        throw new NotFoundException('Bạn chưa chặn người dùng này');
-    }
+    const completedAt = new Date();
 
-    const blockedIndex = blocker.blockedUsers.findIndex(u => u.user_id === blockedId);
-    if (blockedIndex === -1) {
-      throw new NotFoundException('Bạn chưa chặn người dùng này');
-    }
-
-    blocker.blockedUsers.splice(blockedIndex, 1);
-    await this.userRepository.save(blocker);
-  }
-
-  /**
-   * Kiểm tra quan hệ chặn (2 chiều)
-   */
-  async checkBlockRelation(user1Id: string, user2Id: string): Promise<boolean> {
-    const user1 = await this.userRepository.findOne({
-      where: { user_id: user1Id },
-      relations: ['blockedUsers', 'blockedBy'],
-    });
-
-    if (!user1) {
-        return false;
-    }
-
-    // Kiểm tra user1 có chặn user2 không
-    const hasBlocked = user1.blockedUsers?.some(u => u.user_id === user2Id) || false;
-    // Kiểm tra user1 có bị user2 chặn không
-    const isBlockedBy = user1.blockedBy?.some(u => u.user_id === user2Id) || false;
-
-    return hasBlocked || isBlockedBy;
+    return {
+      conversation_id: conversationId,
+      status: 'completed',
+      completed_at: completedAt,
+      message: 'Giao dịch đã được xác nhận thành công',
+    };
   }
 }

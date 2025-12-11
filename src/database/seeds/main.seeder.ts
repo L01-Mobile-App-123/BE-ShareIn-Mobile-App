@@ -3,6 +3,7 @@ import { seedUsers } from './user.seed';
 import { seedPosts } from './post.seed';
 import { seedChats } from './chat.seed';
 import { seedActivities } from './activity.seed';
+import { seedNotifications } from './notification.seed';
 import { AppDataSource } from '@config/typeorm.config';
 import { RatingSubscriber } from '@modules/subscribers/rating.subscriber';
 
@@ -28,6 +29,7 @@ async function runSeeder() {
     await seedUsers(dataSource);
     await seedPosts(dataSource);
     await seedChats(dataSource);
+    await seedNotifications(dataSource);
     
     console.log('🔢 Starting to seed ratings...');
     await seedActivities(dataSource);

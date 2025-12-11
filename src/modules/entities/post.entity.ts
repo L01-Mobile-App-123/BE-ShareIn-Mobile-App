@@ -13,6 +13,7 @@ import { User } from './user.entity';
 import { Category } from './category.entity';
 import { Notification } from './notification.entity';
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
+import { PostStatus } from '@common/enums/post-status.enum';
 
 @Entity('posts')
 export class Post {
@@ -51,6 +52,13 @@ export class Post {
 
   @Column({ type: 'int', default: 0 })
   view_count: number;
+
+  @Column({
+    type: 'enum',
+    enum: PostStatus,
+    default: PostStatus.POSTED,
+  })
+  status: PostStatus;
 
   @Column({
     type: 'json',

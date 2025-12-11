@@ -23,6 +23,7 @@ export class PostService {
       ...createPostDto,
       user_id,
       image_urls: [], // Khởi tạo mảng rỗng, sẽ được cập nhật sau khi upload
+      status: createPostDto.status || undefined,
     });
 
     const savedPost = await this.postsRepository.save(newPost);
@@ -154,5 +155,35 @@ export class PostService {
     }
     
     return { message: 'Hành động không hợp lệ.' };
+  }
+
+  /**
+   * Sao chép/Repost một bài đăng cũ
+   */
+  async repost(user_id: string, originalPostId: string, title?: string, description?: string): Promise<Post> {
+    // 1. Tìm bài đăng gốc
+    const originalPost = await this.postsRepository.findOne({
+      where: { post_id: originalPostId },
+      relations: ['category'],
+    });
+
+    if (!originalPost) {
+      throw new NotFoundException('Không tìm thấy bài đăng gốc để sao chép.');
+    }
+
+    // 2. Tạo bài đăng mới dựa trên bài cũ
+    const newPost = this.postsRepository.create({
+      user_id,
+      category_id: originalPost.category_id,
+      title: title || originalPost.title,
+      description: description || originalPost.description,
+      transaction_type: originalPost.transaction_type,
+      price: originalPost.price,
+      image_urls: [...(originalPost.image_urls || [])], // Copy ảnh
+      is_available: true,
+    });
+
+    const savedPost = await this.postsRepository.save(newPost);
+    return savedPost;
   }
 }

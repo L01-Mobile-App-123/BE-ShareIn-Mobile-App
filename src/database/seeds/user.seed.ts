@@ -10,6 +10,8 @@ export async function seedUsers(dataSource: DataSource) {
     return;
   }
 
+  const seedCount = parseInt(process.env.USERS_SEED_COUNT || '200', 10);
+
   const users: Partial<User>[] = [
     {
       firebase_uid: 'iDNX5J3eOAPgMT7ZlEYHZDgAlMI2',
@@ -42,6 +44,27 @@ export async function seedUsers(dataSource: DataSource) {
     }
   ];
 
+  // Tạo thêm user ngẫu nhiên để đạt seedCount
+  const additional = Math.max(0, seedCount - users.length);
+  for (let i = 0; i < additional; i++) {
+    const idx = i + 1;
+    users.push({
+      firebase_uid: `seed-uid-${idx}-${Date.now()}`,
+      email: `seed_user_${idx}@example.com`,
+      full_name: `Seed User ${idx}`,
+      phone_number: `090${1000000 + idx}`,
+      avatar_url: `https://picsum.photos/seed/user${idx}/200/200`,
+      school_name: 'Trường Đại học Thử nghiệm',
+      dormitory: ['KTX Khu A', 'KTX Khu B'][Math.floor(Math.random() * 2)],
+      date_of_birth: new Date(1999 + (idx % 6), 0, 1),
+      academic_year: (idx % 5) + 1,
+      reputation_score: Math.floor(Math.random() * 100),
+      total_votes_up: 0,
+      total_votes_down: 0,
+      is_active: true,
+    });
+  }
+
   await repo.insert(users);
-  console.log('✅ Users seeded successfully!');
+  console.log(`✅ Seeded ${users.length} users.`);
 }

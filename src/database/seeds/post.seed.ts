@@ -29,11 +29,14 @@ export async function seedPosts(dataSource: DataSource) {
 
   const posts: Post[] = [];
 
-  for (let i = 0; i < 50; i++) { // Tạo 50 bài đăng
+  const postCount = parseInt(process.env.POSTS_SEED_COUNT || '1000', 10);
+
+  for (let i = 0; i < postCount; i++) {
     const randomUser = users[Math.floor(Math.random() * users.length)];
     const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     const randomTitle = POST_TITLES[Math.floor(Math.random() * POST_TITLES.length)];
-    const type = Object.values(PostTransactionType)[Math.floor(Math.random() * 3)];
+    const types = Object.values(PostTransactionType);
+    const type = types[Math.floor(Math.random() * types.length)];
 
     const post = postRepo.create({
       user: randomUser,

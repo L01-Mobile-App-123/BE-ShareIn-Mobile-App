@@ -3,11 +3,13 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { RepostDto } from './dto/repost.dto';
 import { CategoryDto } from './dto/category.dto';
 import { GetPostDto } from './dto/get-post.dto';
 import { MultipleFilesUploadDto } from './dto/multiple-files-upload.dto';
 import { plainToInstance } from 'class-transformer';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiConsumes, } from '@nestjs/swagger';
+import { PostStatus } from '@common/enums/post-status.enum';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { CloudinaryService } from '@modules/cloudinary/cloudinary.service';
 import { ApiResponseDto } from '@common/dto/api-response.dto';
@@ -47,6 +49,19 @@ export class PostController {
   ): Promise<ApiResponseDto<GetPostDto>> {
     const post = await this.postService.create(req.user.userId, createPostDto);
     return new ApiResponseDto("Create post successfully", plainToInstance(GetPostDto, post));
+  }
+
+  @Post('save')
+  @ApiOperation({ summary: 'Lưu bài đăng ở dạng nháp (draft). Tạo bài đăng nhưng không công khai.' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Bài đăng nháp đã được lưu.', type: GetPostDto })
+  async saveDraft(
+    @Req() req: UserRequest,
+    @Body() createPostDto: CreatePostDto
+  ): Promise<ApiResponseDto<GetPostDto>> {
+    // Force status to DRAFT regardless of incoming value
+    createPostDto.status = PostStatus.DRAFT;
+    const post = await this.postService.create(req.user.userId, createPostDto);
+    return new ApiResponseDto('Saved draft successfully', plainToInstance(GetPostDto, post));
   }
 
   @Patch(':postId/images')
@@ -146,4 +161,28 @@ export class PostController {
   //   const user_id = this.getUserIdFromRequest();
   //   return this.postService.softDeleteOrHide(postId, user_id, action);
   // }
+
+  /**
+   * Sao chép/Repost một bài đăng cũ
+   */
+  @Post(':postId/repost')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Sao chép lại bài đăng cũ của mình' })
+  @ApiParam({ name: 'postId', description: 'ID bài đăng gốc' })
+  @ApiBody({ type: RepostDto })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Bài đăng đã được sao chép.', type: GetPostDto })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy bài đăng gốc' })
+  async repost(
+    @Param('postId') postId: string,
+    @Req() req: UserRequest,
+    @Body() repostDto: RepostDto,
+  ): Promise<ApiResponseDto<GetPostDto>> {
+    const newPost = await this.postService.repost(
+      req.user.userId,
+      repostDto.original_post_id || postId,
+      repostDto.title,
+      repostDto.description,
+    );
+    return new ApiResponseDto('Sao chép bài đăng thành công', plainToInstance(GetPostDto, newPost));
+  }
 }

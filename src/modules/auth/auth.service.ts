@@ -3,6 +3,7 @@ import { FIREBASE_AUTH } from '@firebase/firebase.constants';
 import type { Auth } from 'firebase-admin/auth';
 import { UsersService } from '@modules/users/user.service';
 import { UserRecord, DecodedIdToken } from 'firebase-admin/auth';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
@@ -12,11 +13,34 @@ export class AuthService {
   ) {}
 
   /**
-   * Tạo custom token để test (không dùng trong thực tế)
+   * Tạo ID token để test (dùng JWT HS256 với secret key)
    */
-  async createTestToken(uid: string, email: string) { // Sửa: String -> string
-    const customToken = await this.auth.createCustomToken(uid, { email });
-    return { customToken };
+  async createTestToken(uid: string, email: string) {
+    // Tạo ID token dạng JWT theo Firebase ID token format
+    const secret = 'test-secret-key-for-development'; // Secret key để sign
+    const now = Math.floor(Date.now() / 1000);
+    const expiresIn = 3600; // 1 hour
+    
+    const payload = {
+      iss: 'https://securetoken.google.com/test-project',
+      aud: 'test-project',
+      auth_time: now,
+      user_id: uid,
+      sub: uid,
+      iat: now,
+      exp: now + expiresIn,
+      email: email,
+      email_verified: false,
+      firebase: {
+        identities: {
+          email: [email]
+        },
+        sign_in_provider: 'custom'
+      }
+    };
+
+    const idToken = jwt.sign(payload, secret, { algorithm: 'HS256' });
+    return { idToken };
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, HttpCode, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, HttpCode, UseGuards, Req, Query, HttpStatus } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatMapperService } from './chat.mapper.service';
@@ -11,8 +11,8 @@ import {
   PaginatedMessagesResponseDto,
   GetMessagesQueryDto,
   MarkAsReadResponseDto,
-  BlockUserDto,
-  BlockUserResponseDto
+  CompleteTransactionDto,
+  TransactionCompleteResponseDto
 } from './dto/chat.dto';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { type UserRequest } from '@common/interfaces/userRequest.interface';
@@ -158,53 +158,31 @@ export class ChatController {
     );
   }
 
-  @Post('block')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Chặn người dùng (Block)' })
-  @ApiBody({ type: BlockUserDto })
-  @ApiResponse({ 
-    status: 200, 
-    type: BlockUserResponseDto,
-    description: 'Chặn thành công.' 
-  })
-  async blockUser(
-    @Body() dto: BlockUserDto,
+  /**
+   * Hoàn thành/Xác nhận giao dịch
+   */
+  @Post(':conversationId/complete-transaction')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Xác nhận hoàn thành giao dịch' })
+  @ApiParam({ name: 'conversationId', description: 'ID của cuộc trò chuyện' })
+  @ApiBody({ type: CompleteTransactionDto })
+  @ApiResponse({ status: 200, description: 'Giao dịch đã hoàn thành', type: TransactionCompleteResponseDto })
+  async completeTransaction(
+    @Param('conversationId') conversationId: string,
     @Req() req: UserRequest,
-  ): Promise<ApiResponseDto<BlockUserResponseDto>> {
-    const currentUserId = req.user.userId;
-    await this.chatService.blockUser(currentUserId, dto.target_user_id);
-    
-    return new ApiResponseDto<BlockUserResponseDto>(
-      'Chặn người dùng thành công',
-      {
-        success: true,
-        message: 'Đã chặn người dùng này. Bạn sẽ không nhận được tin nhắn từ họ nữa.',
-      },
+    @Body() dto: CompleteTransactionDto,
+  ): Promise<ApiResponseDto<TransactionCompleteResponseDto>> {
+    const userId = req.user.userId;
+    const result = await this.chatService.completeTransaction(
+      conversationId,
+      userId,
+      dto.final_price,
+      dto.notes,
     );
-  }
 
-  @Post('unblock')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Bỏ chặn người dùng (Unblock)' })
-  @ApiBody({ type: BlockUserDto })
-  @ApiResponse({ 
-    status: 200, 
-    type: BlockUserResponseDto,
-    description: 'Bỏ chặn thành công.' 
-  })
-  async unblockUser(
-    @Body() dto: BlockUserDto,
-    @Req() req: UserRequest,
-  ): Promise<ApiResponseDto<BlockUserResponseDto>> {
-    const currentUserId = req.user.userId;
-    await this.chatService.unblockUser(currentUserId, dto.target_user_id);
-    
-    return new ApiResponseDto<BlockUserResponseDto>(
-      'Bỏ chặn người dùng thành công',
-      {
-        success: true,
-        message: 'Đã bỏ chặn người dùng này.',
-      },
+    return new ApiResponseDto<TransactionCompleteResponseDto>(
+      'Xác nhận giao dịch thành công',
+      result as TransactionCompleteResponseDto,
     );
   }
 }

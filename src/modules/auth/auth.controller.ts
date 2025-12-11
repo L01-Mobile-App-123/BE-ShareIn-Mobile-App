@@ -46,14 +46,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Create test Firebase ID token' })
   @ApiResponse({ status: 201, description: 'Test token created successfully' })
   async getTestToken(@Body() body: {uid: string, email: string}) {
-    const { customToken } = await this.authService.createTestToken(body.uid, body.email);
+    const { idToken } = await this.authService.createTestToken(body.uid, body.email);
 
-    const res = await axios.post(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${this.getFirebaseConfig().apiKey}`,
-      { token: customToken, returnSecureToken: true }
-    );
-
-    return { idToken: res.data.idToken };
+    return { idToken };
   }
 
   /**

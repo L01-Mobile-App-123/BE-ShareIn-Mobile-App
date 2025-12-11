@@ -46,6 +46,10 @@ export class GetPostDto {
   @Expose()
   is_available: boolean;
 
+  @ApiProperty({ description: 'Trạng thái bài đăng', enum: ['draft','posted'] })
+  @Expose()
+  status: string;
+
   @ApiProperty({ enum: PostTransactionType })
   @Expose()
   transaction_type: PostTransactionType;
