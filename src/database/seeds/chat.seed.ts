@@ -23,8 +23,11 @@ export async function seedChats(dataSource: DataSource) {
     return;
   }
 
-  // Tạo 10 cuộc hội thoại ngẫu nhiên
-  for (let i = 0; i < 10; i++) {
+  const convCount = parseInt(process.env.CONVERSATIONS_SEED_COUNT || '200', 10);
+  const messagesPerConv = parseInt(process.env.MESSAGES_PER_CONV || '6', 10);
+
+  // Tạo nhiều cuộc hội thoại ngẫu nhiên
+  for (let i = 0; i < convCount; i++) {
     // Chọn 2 user ngẫu nhiên khác nhau
     let user1 = users[Math.floor(Math.random() * users.length)];
     let user2 = users[Math.floor(Math.random() * users.length)];
@@ -51,7 +54,7 @@ export async function seedChats(dataSource: DataSource) {
 
     // Tạo tin nhắn cho hội thoại này
     const messages: Message[] = [];
-    for (let j = 0; j < 4; j++) { // 4 tin nhắn mỗi cuộc
+    for (let j = 0; j < messagesPerConv; j++) { // tin nhắn mỗi cuộc
       const sender = j % 2 === 0 ? initiator : recipient;
       const msg = messageRepo.create({
         conversation: conversation,

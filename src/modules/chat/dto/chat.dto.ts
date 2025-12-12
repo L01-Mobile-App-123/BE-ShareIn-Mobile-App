@@ -134,17 +134,48 @@ export class MarkAsReadResponseDto {
   message: string;
 }
 
-export class BlockUserDto {
-  @ApiProperty({ description: 'ID của người dùng muốn chặn/bỏ chặn' })
-  @IsUUID()
-  @IsNotEmpty()
-  target_user_id: string;
+// --- Transaction DTOs ---
+
+export class CompleteTransactionDto {
+  @ApiProperty({
+    description: 'Giá cuối cùng đồng ý',
+    example: 100000,
+    required: false
+  })
+  @IsOptional()
+  final_price?: number;
+
+  @ApiProperty({
+    description: 'Ghi chú về giao dịch',
+    example: 'Giao dịch thành công, cảm ơn',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
-export class BlockUserResponseDto {
-  @ApiProperty()
-  success: boolean;
+export class TransactionCompleteResponseDto {
+  @ApiProperty({
+    description: 'ID cuộc trò chuyện'
+  })
+  conversation_id: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Trạng thái giao dịch',
+    example: 'completed'
+  })
+  status: string;
+
+  @ApiProperty({
+    description: 'Thời gian hoàn thành',
+    example: '2025-12-11T12:00:00Z'
+  })
+  completed_at: Date;
+
+  @ApiProperty({
+    description: 'Tin nhắn xác nhận',
+    example: 'Giao dịch đã hoàn thành'
+  })
   message: string;
 }

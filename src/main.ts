@@ -5,6 +5,7 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { corsConfig } from '@config/cors.config';
 import { swaggerConfig, swaggerOptions } from '@config/swagger.config';
 import { validationConfig } from '@config/validation.config';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,9 @@ async function bootstrap() {
 
   // Validation
   app.useGlobalPipes(new ValidationPipe(validationConfig));
+
+  // Accept raw text/plain bodies so endpoints can handle plain text notifications
+  app.use(express.text({ type: 'text/*' }));
 
   // Swagger
   const document = SwaggerModule.createDocument(app, swaggerConfig);

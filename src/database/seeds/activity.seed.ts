@@ -63,33 +63,34 @@ export async function seedActivities(dataSource: DataSource) {
     console.log('✅ Seeded search history.');
   }
 
-  // 4. Seed Ratings
-  // --- THAY ĐỔI: Lưu TỪNG RATING MỘT để kích hoạt Subscriber ---
-  const ratingRepo = dataSource.getRepository(Rating);
-  if (posts.length > 0 && users.length > 1) {
+    // 4. Seed Ratings
+    // --- Lưu từng rating một để kích hoạt Subscriber ---
+    const ratingRepo = dataSource.getRepository(Rating);
+    if (posts.length > 0 && users.length > 1) {
+    const ratingsCount = parseInt(process.env.RATINGS_SEED_COUNT || '500', 10);
     let successCount = 0;
     
-    for(let i=0; i<20; i++) {
-        const post = posts[Math.floor(Math.random() * posts.length)];
+    for(let i=0; i<ratingsCount; i++) {
+      const post = posts[Math.floor(Math.random() * posts.length)];
         
-        if (!post.user) continue;
+      if (!post.user) continue;
 
-        const rater = users.find(u => u.user_id !== post.user.user_id) || users[0];
+      const rater = users.find(u => u.user_id !== post.user.user_id) || users[0];
         
-        const rating = ratingRepo.create({
-            rater: rater,
-            rated_user: post.user, 
-            rating_score: Math.floor(Math.random() * 2) + 4, // 4 hoặc 5 sao
-            comment: 'Giao dịch nhanh gọn, uy tín.'
-        });
+      const rating = ratingRepo.create({
+        rater: rater,
+        rated_user: post.user, 
+        rating_score: Math.floor(Math.random() * 2) + 4, // 4 hoặc 5 sao
+        comment: 'Giao dịch nhanh gọn, uy tín.'
+      });
 
-        try {
-            await ratingRepo.save(rating); // Lưu TỪNG CÁI một
-            successCount++;
-        } catch (e) {
-            console.error(`Failed to save rating ${i}:`, e.message);
-        }
+      try {
+        await ratingRepo.save(rating); // Lưu từng cái một
+        successCount++;
+      } catch (e) {
+        // ignore duplicates / FK issues
+      }
     }
     console.log(`✅ Seeded ${successCount} ratings.`);
-  }
+    }
 }

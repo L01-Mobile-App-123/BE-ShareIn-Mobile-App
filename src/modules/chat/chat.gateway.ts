@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { WsCreateMessageDto, WsMarkReadDto, MessagePayload } from './dto/websocket.dto';
+import { WsCreateMessageDto, WsMarkReadDto, WsTypingDto, MessagePayload } from './dto/websocket.dto';
 import { ConflictException, NotFoundException, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Conversation } from '@modules/entities/conversation.entity';
 
@@ -186,6 +186,64 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             client.emit('error_read', {
                 conversationId: dto.conversationId,
                 error: `Lỗi khi đánh dấu đã đọc: ${(error as Error).message || 'Lỗi không xác định'}`,
+            });
+        }
+    }
+
+    /**
+     * Xử lý sự kiện typing indicator
+     */
+    @UsePipes(new ValidationPipe())
+    @SubscribeMessage('typing_indicator')
+    async handleTyping(
+        @MessageBody() dto: WsTypingDto,
+        @ConnectedSocket() client: Socket,
+    ): Promise<void> {
+        const userId = (client as any).userId;
+
+        try {
+            // 1. Lấy thông tin conversation để biết người kia là ai
+            const conversation = await this.chatService.conversationRepository.findOne({
+                where: { conversation_id: dto.conversationId },
+                relations: ['initiator', 'recipient']
+            });
+
+            if (!conversation) {
+                client.emit('error_typing', {
+                    conversationId: dto.conversationId,
+                    error: 'Conversation not found',
+                });
+                return;
+            }
+
+            // 2. Xác định người nhận
+            const recipientId = conversation.initiator_id === userId
+                ? conversation.recipient_id
+                : conversation.initiator_id;
+
+            // 3. Lấy thông tin người gửi
+            const senderInfo = conversation.initiator_id === userId
+                ? conversation.initiator
+                : conversation.recipient;
+
+            // 4. Phát sự kiện cho người nhận
+            const recipientSockets = this.userSocketMap.get(recipientId) || [];
+            recipientSockets.forEach(socketId => {
+                this.server.to(socketId).emit('typing_indicator', {
+                    conversation_id: dto.conversationId,
+                    user_id: userId,
+                    full_name: senderInfo?.full_name || 'User',
+                    is_typing: dto.isTyping,
+                });
+            });
+
+            // 5. Acknowledge lại cho sender
+            client.emit('typing_ack', { conversationId: dto.conversationId });
+
+        } catch (error) {
+            client.emit('error_typing', {
+                conversationId: dto.conversationId,
+                error: `Lỗi khi gửi typing indicator: ${(error as Error).message || 'Lỗi không xác định'}`,
             });
         }
     }
