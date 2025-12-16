@@ -26,7 +26,7 @@ export class UpdateUserDto {
   @ApiProperty({ description: 'Ngày sinh (YYYY-MM-DD)', example: '2001-05-15', type: String, format: 'date', required: false })
   @IsOptional()
   @IsDateString()
-  date_of_birth?: Date;
+  date_of_birth?: string;
 
   @ApiProperty({ description: 'Năm học hiện tại', example: 4, required: false })
   @IsOptional()
