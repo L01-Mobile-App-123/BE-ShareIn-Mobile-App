@@ -69,10 +69,11 @@ export class UsersService {
       throw new NotFoundException(`Không tìm thấy người dùng với ID "${user_id}".`);
     }
     
-    const updatePayload: Partial<User> = { ...updateData };
+    const { date_of_birth, ...restData } = updateData;
+    const updatePayload: Partial<User> = { ...restData };
     
-    if (updateData.date_of_birth) {
-        updatePayload.date_of_birth = new Date(updateData.date_of_birth);
+    if (date_of_birth) {
+      updatePayload.date_of_birth = new Date(date_of_birth);
     }
     
     await this.repo.update(user_id, updatePayload);
