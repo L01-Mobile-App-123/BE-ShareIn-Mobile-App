@@ -106,6 +106,10 @@ export class ChatService {
     if (!conversation) {
       throw new NotFoundException('Không tìm thấy cuộc trò chuyện.');
     }
+
+    if (conversation.is_locked) {
+      throw new ForbiddenException('Cuộc trò chuyện đã bị khóa sau khi hoàn tất giao dịch');
+    }
     
     // Xác định người nhận
     const recipientId = conversation.initiator_id === senderId 
@@ -269,6 +273,9 @@ export class ChatService {
     await this.messageRepository.save(confirmationMessage);
 
     const completedAt = new Date();
+
+    conversation.is_locked = true;
+    await this.conversationRepository.save(conversation);
 
     return {
       conversation_id: conversationId,

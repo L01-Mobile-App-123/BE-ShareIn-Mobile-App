@@ -32,12 +32,12 @@ export class CloudinaryService {
     return result.secure_url; // Trả về URL an toàn
   }
 
-  async uploadMultipleFiles(postId: string, files: Express.Multer.File[]): Promise<string[]> {
+  async uploadMultipleFiles(targetId: string, files: Express.Multer.File[], folderPrefix = 'post_images'): Promise<string[]> {
     if (!files || files.length === 0) {
         throw new BadRequestException('Vui lòng cung cấp ít nhất một file ảnh.');
     }
 
-    const FOLDER_NAME = `post_images/${postId}`;
+    const FOLDER_NAME = `${folderPrefix}/${targetId}`;
     const uploadPromises = files.map(file => {
       return new Promise<UploadApiResponse>((resolve, reject) => {
         this.cloudinary.uploader.upload_stream({

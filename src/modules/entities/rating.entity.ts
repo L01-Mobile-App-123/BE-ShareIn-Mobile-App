@@ -28,8 +28,8 @@ export class Rating {
   @Column({ type: 'text', nullable: true })
   comment: string;
 
-  @Column({ type: 'text', nullable: true })
-  proof_image_url: string;
+  @Column({ type: 'json', nullable: true })
+  proof_image_urls: string[];
 
   @CreateDateColumn()
   created_at: Date;

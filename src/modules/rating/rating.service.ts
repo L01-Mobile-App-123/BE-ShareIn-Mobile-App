@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -39,7 +40,7 @@ export class RatingService {
       rated_user_id: dto.rated_user_id,
       rating_score: dto.rating_score, // Thay đổi từ is_positive
       comment: dto.comment,
-      proof_image_url: dto.proof_image_url,
+      proof_image_urls: dto.proof_image_urls || [],
     });
 
     return await this.ratingRepository.save(rating);
@@ -66,9 +67,40 @@ export class RatingService {
     // Cập nhật các trường
     if (dto.rating_score !== undefined) rating.rating_score = dto.rating_score;
     if (dto.comment !== undefined) rating.comment = dto.comment;
-    if (dto.proof_image_url !== undefined) rating.proof_image_url = dto.proof_image_url;
+    if (dto.proof_image_urls !== undefined) {
+      if (dto.proof_image_urls.length > 10) {
+        throw new BadRequestException('Tối đa 10 ảnh chứng minh');
+      }
+      rating.proof_image_urls = dto.proof_image_urls;
+    }
 
     return await this.ratingRepository.save(rating);
+  }
+
+  async addProofImages(
+    raterId: string,
+    ratingId: string,
+    imageUrls: string[],
+  ): Promise<Rating> {
+    const rating = await this.ratingRepository.findOne({ where: { rating_id: ratingId } });
+
+    if (!rating) {
+      throw new NotFoundException('Không tìm thấy đánh giá');
+    }
+
+    if (rating.rater_id !== raterId) {
+      throw new ForbiddenException('Bạn không có quyền thêm ảnh cho đánh giá này');
+    }
+
+    const current = rating.proof_image_urls || [];
+    const combined = [...current, ...imageUrls];
+
+    if (combined.length > 10) {
+      throw new BadRequestException('Tối đa 10 ảnh chứng minh');
+    }
+
+    rating.proof_image_urls = combined;
+    return this.ratingRepository.save(rating);
   }
 
   async deleteRating(raterId: string, ratingId: string): Promise<void> {

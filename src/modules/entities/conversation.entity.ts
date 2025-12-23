@@ -32,6 +32,9 @@ export class Conversation {
   @Column({ type: 'timestamp', nullable: true, default: null }) 
   recipient_last_read: Date | null; 
 
+  @Column({ type: 'boolean', default: false })
+  is_locked: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

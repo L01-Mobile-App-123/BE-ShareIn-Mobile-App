@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min, IsArray, ArrayMaxSize, ArrayMinSize, IsUrl } from 'class-validator';
 
 export class CreateRatingDto {
   @ApiProperty({ description: 'ID của người được đánh giá' })
@@ -19,10 +19,12 @@ export class CreateRatingDto {
   @IsOptional()
   comment?: string;
 
-  @ApiPropertyOptional({ description: 'URL ảnh chứng minh (nếu có)' })
-  @IsString()
+  @ApiPropertyOptional({ description: 'Danh sách URL ảnh chứng minh (tối đa 10)' })
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
   @IsOptional()
-  proof_image_url?: string;
+  proof_image_urls?: string[];
 }
 
 export class UpdateRatingDto {
@@ -38,10 +40,12 @@ export class UpdateRatingDto {
   @IsOptional()
   comment?: string;
 
-  @ApiPropertyOptional({ description: 'URL ảnh chứng minh' })
-  @IsString()
+  @ApiPropertyOptional({ description: 'Danh sách URL ảnh chứng minh (ghi đè toàn bộ)', type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
   @IsOptional()
-  proof_image_url?: string;
+  proof_image_urls?: string[];
 }
 
 export class UserRatingStatsDto {
@@ -83,9 +87,14 @@ export class RatingResponseDto {
   @ApiProperty()
   comment: string;
 
-  @ApiProperty()
-  proof_image_url: string;
+  @ApiProperty({ type: [String] })
+  proof_image_urls: string[];
 
   @ApiProperty()
   created_at: Date;
+}
+
+export class RatingImagesUploadDto {
+  @ApiProperty({ type: 'string', format: 'binary', description: 'Danh sách file ảnh (tối đa 10)', isArray: true })
+  files: any[];
 }
