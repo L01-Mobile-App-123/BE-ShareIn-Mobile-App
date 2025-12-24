@@ -1,16 +1,26 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '@modules/entities/post.entity'; 
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
+import { PostLike } from '@modules/entities/post-like.entity';
+import { PostSave } from '@modules/entities/post-save.entity';
+import { Rating } from '@modules/entities/rating.entity';
+import { PostStatus } from '@common/enums/post-status.enum';
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectRepository(Post)
     private postsRepository: Repository<Post>,
+    @InjectRepository(PostLike)
+    private postLikeRepository: Repository<PostLike>,
+    @InjectRepository(PostSave)
+    private postSaveRepository: Repository<PostSave>,
+    @InjectRepository(Rating)
+    private ratingRepository: Repository<Rating>,
   ) {}
 
   async create(user_id: string, createPostDto: CreatePostDto): Promise<Post> {
@@ -119,6 +129,97 @@ export class PostService {
       order: { created_at: 'DESC' },
     });
     return { data, total};
+  }
+
+  async findDrafts(user_id: string, page = 1, limit = 20): Promise<{ data: Post[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.postsRepository.findAndCount({
+      where: { user_id, status: PostStatus.DRAFT },
+      relations: ['category'],
+      take: limit,
+      skip,
+      order: { created_at: 'DESC' },
+    });
+    return { data, total };
+  }
+
+  async likePost(user_id: string, post_id: string): Promise<void> {
+    const post = await this.postsRepository.findOne({ where: { post_id } });
+    if (!post) throw new NotFoundException('Bài đăng không tồn tại');
+    if (post.user_id === user_id) throw new ForbiddenException('Không thể tự like bài viết của mình');
+
+    const existed = await this.postLikeRepository.findOne({ where: { user_id, post_id } });
+    if (existed) throw new ConflictException('Bạn đã like bài viết này');
+
+    const like = this.postLikeRepository.create({ user_id, post_id });
+    await this.postLikeRepository.save(like);
+  }
+
+  async unlikePost(user_id: string, post_id: string): Promise<void> {
+    await this.postLikeRepository.delete({ user_id, post_id });
+  }
+
+  async savePost(user_id: string, post_id: string): Promise<void> {
+    const post = await this.postsRepository.findOne({ where: { post_id } });
+    if (!post) throw new NotFoundException('Bài đăng không tồn tại');
+    if (post.user_id === user_id) throw new ForbiddenException('Không thể lưu bài viết của chính mình');
+
+    const existed = await this.postSaveRepository.findOne({ where: { user_id, post_id } });
+    if (existed) throw new ConflictException('Bạn đã lưu bài viết này');
+
+    await this.postSaveRepository.save(this.postSaveRepository.create({ user_id, post_id }));
+  }
+
+  async unsavePost(user_id: string, post_id: string): Promise<void> {
+    await this.postSaveRepository.delete({ user_id, post_id });
+  }
+
+  async getSavedPosts(
+    user_id: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ data: Array<{ post: Post; like_count: number; poster_rating: number }>; total: number; page: number; limit: number }> {
+    try {
+      const skip = (page - 1) * limit;
+
+      // Lấy danh sách saved posts với pagination
+      const [savedPosts, total] = await this.postSaveRepository.findAndCount({
+        where: { user_id },
+        relations: ['post', 'post.user', 'post.category'],
+        order: { created_at: 'DESC' },
+        skip,
+        take: limit,
+      });
+
+      // Build data với like_count và poster_rating cho mỗi bài
+      const data = await Promise.all(
+        savedPosts
+          .filter(save => save.post && save.post.user && save.post.user_id !== user_id) // Lọc bài của người khác, loại null
+          .map(async (save) => {
+            const post = save.post;
+
+            // Đếm số like
+            const like_count = await this.postLikeRepository.count({
+              where: { post_id: post.post_id },
+            });
+
+            // Tính rating trung bình của người đăng
+            const ratings = await this.ratingRepository.find({
+              where: { rated_user_id: post.user_id },
+            });
+            const poster_rating = ratings.length > 0
+              ? ratings.reduce((sum, r) => sum + r.rating_score, 0) / ratings.length
+              : 0;
+
+            return { post, like_count, poster_rating };
+          })
+      );
+
+      return { data, total: data.length, page, limit };
+    } catch (error) {
+      console.error('Error in getSavedPosts:', error);
+      throw new InternalServerErrorException('Không thể lấy danh sách bài viết đã lưu');
+    }
   }
     
   async softDeleteOrHide(post_id: string, user_id: string, action: 'hide' | 'delete'): Promise<{ message: string }> {

@@ -1,18 +1,23 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Req, HttpStatus, Query, Patch, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Param, UseGuards, Req, HttpStatus, Query, Patch, Delete, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { RatingService } from './rating.service';
-import { CreateRatingDto, UpdateRatingDto, RatingResponseDto, UserRatingStatsDto } from './dto/rating.dto';
+import { CreateRatingDto, UpdateRatingDto, RatingResponseDto, UserRatingStatsDto, RatingImagesUploadDto } from './dto/rating.dto';
 import { FirebaseAuthGuard } from '@common/guards/firebase-auth.guard';
 import { type UserRequest } from '@common/interfaces/userRequest.interface';
 import { ApiResponseDto } from '@common/dto/api-response.dto';
 import { plainToInstance } from 'class-transformer';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { CloudinaryService } from '@modules/cloudinary/cloudinary.service';
 
 @ApiTags('ratings')
 @Controller('ratings')
 @UseGuards(FirebaseAuthGuard)
 @ApiBearerAuth()
 export class RatingController {
-  constructor(private readonly ratingService: RatingService) {}
+  constructor(
+    private readonly ratingService: RatingService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @ApiOperation({ 
@@ -200,6 +205,26 @@ export class RatingController {
     return new ApiResponseDto(
       'Lấy danh sách đánh giá đã nhận thành công',
       plainToInstance(RatingResponseDto, ratings),
+    );
+  }
+
+  @Patch(':ratingId/images')
+  @ApiOperation({ summary: 'Thêm ảnh chứng minh vào đánh giá (cộng dồn, tối đa 10)' })
+  @ApiParam({ name: 'ratingId', description: 'ID đánh giá' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: RatingImagesUploadDto })
+  @UseInterceptors(FilesInterceptor('files'))
+  async addImages(
+    @Param('ratingId') ratingId: string,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+    @Req() req: UserRequest,
+  ): Promise<ApiResponseDto<RatingResponseDto>> {
+    const raterId = req.user.userId;
+    const imageUrls = await this.cloudinaryService.uploadMultipleFiles(`rating_proofs/${ratingId}`, files);
+    const rating = await this.ratingService.addProofImages(raterId, ratingId, imageUrls);
+    return new ApiResponseDto(
+      'Thêm ảnh chứng minh thành công',
+      plainToInstance(RatingResponseDto, rating),
     );
   }
 }

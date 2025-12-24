@@ -15,6 +15,7 @@ import { CloudinaryService } from '@modules/cloudinary/cloudinary.service';
 import { ApiResponseDto } from '@common/dto/api-response.dto';
 import { type UserRequest } from '@common/interfaces/userRequest.interface';
 import { CategoryService } from '@modules/category/cateogry.service';
+import { SavedPostResponseDto } from './dto/like-save-post.dto';
 
 @ApiTags('posts')
 @ApiBearerAuth()
@@ -83,6 +84,42 @@ export class PostController {
     return new ApiResponseDto("Upload post's images sucessfully", plainToInstance(GetPostDto, updatedPost)); 
   }
 
+  @Post(':postId/like')
+  @ApiOperation({ summary: 'Like bài viết của người khác' })
+  @ApiParam({ name: 'postId', description: 'ID bài viết' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Đã like bài viết' })
+  async likePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
+    await this.postService.likePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã like bài viết', null);
+  }
+
+  @Delete(':postId/like')
+  @ApiOperation({ summary: 'Bỏ like bài viết' })
+  @ApiParam({ name: 'postId', description: 'ID bài viết' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Đã bỏ like' })
+  async unlikePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
+    await this.postService.unlikePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã bỏ like bài viết', null);
+  }
+
+  @Post(':postId/save')
+  @ApiOperation({ summary: 'Lưu bài viết của người khác' })
+  @ApiParam({ name: 'postId', description: 'ID bài viết' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Đã lưu bài viết' })
+  async savePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
+    await this.postService.savePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã lưu bài viết', null);
+  }
+
+  @Delete(':postId/save')
+  @ApiOperation({ summary: 'Bỏ lưu bài viết' })
+  @ApiParam({ name: 'postId', description: 'ID bài viết' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Đã bỏ lưu' })
+  async unsavePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
+    await this.postService.unsavePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã bỏ lưu bài viết', null);
+  }
+
   @Get('me')
   @ApiOperation({ summary: 'Lấy danh sách bài đăng của người dùng hiện tại' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Danh sách bài đăng của user.', type: [GetPostDto] })
@@ -100,6 +137,69 @@ export class PostController {
       total: total,
       page: page,
       limit: limit,
+    });
+  }
+
+  @Get('drafts')
+  @ApiOperation({ summary: 'Lấy danh sách bài đăng nháp (draft) của người dùng hiện tại' })
+  @ApiQuery({ name: 'page', required: false, type: 'number' })
+  @ApiQuery({ name: 'limit', required: false, type: 'number' })
+  async getDrafts(
+    @Req() req: UserRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<ApiResponseDto<{data: GetPostDto[], total: number, page: number, limit: number}>> {
+    const { data, total } = await this.postService.findDrafts(req.user.userId, page, limit);
+    return new ApiResponseDto('Get draft posts', {
+      data: plainToInstance(GetPostDto, data),
+      total,
+      page,
+      limit,
+    });
+  }
+
+  @Get('saved')
+  @ApiOperation({ summary: 'Lấy danh sách bài viết của người khác mà tôi đã lưu (kèm like_count, poster_rating)' })
+  @ApiQuery({ name: 'page', required: false, type: 'number' })
+  @ApiQuery({ name: 'limit', required: false, type: 'number' })
+  @ApiResponse({ status: HttpStatus.OK, type: [SavedPostResponseDto] })
+  async getSavedPosts(
+    @Req() req: UserRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<ApiResponseDto<{ data: SavedPostResponseDto[]; total: number; page: number; limit: number }>> {
+    const { data, total } = await this.postService.getSavedPosts(req.user.userId, page, limit);
+
+    const mapped = data.map(({ post, like_count, poster_rating }) => {
+      const dto = new SavedPostResponseDto();
+      dto.post_id = post.post_id;
+      dto.title = post.title;
+      dto.description = post.description;
+      dto.price = Number(post.price);
+      dto.location = post.location;
+      dto.transaction_type = post.transaction_type;
+      dto.image_urls = post.image_urls || [];
+      dto.view_count = post.view_count;
+      dto.like_count = like_count;
+      dto.poster_rating = poster_rating;
+      dto.user = {
+        user_id: post.user?.user_id,
+        full_name: post.user?.full_name,
+        avatar_url: post.user?.avatar_url,
+      };
+      dto.category = post.category
+        ? { category_id: post.category.category_id, name: (post.category as any).category_name }
+        : null;
+      dto.created_at = post.created_at;
+      dto.updated_at = post.updated_at;
+      return dto;
+    });
+
+    return new ApiResponseDto('Get saved posts successfully', {
+      data: mapped,
+      total,
+      page,
+      limit,
     });
   }
 
