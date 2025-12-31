@@ -87,19 +87,25 @@ export class PostController {
   @Post(':postId/like')
   @ApiOperation({ summary: 'Like bài viết của người khác' })
   @ApiParam({ name: 'postId', description: 'ID bài viết' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Đã like bài viết' })
-  async likePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
-    await this.postService.likePost(req.user.userId, postId);
-    return new ApiResponseDto('Đã like bài viết', null);
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Đã like bài viết (kèm like_count mới)' })
+  async likePost(
+    @Req() req: UserRequest,
+    @Param('postId') postId: string,
+  ): Promise<ApiResponseDto<{ like_count: number }>> {
+    const result = await this.postService.likePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã like bài viết', result);
   }
 
   @Delete(':postId/like')
   @ApiOperation({ summary: 'Bỏ like bài viết' })
   @ApiParam({ name: 'postId', description: 'ID bài viết' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Đã bỏ like' })
-  async unlikePost(@Req() req: UserRequest, @Param('postId') postId: string): Promise<ApiResponseDto<null>> {
-    await this.postService.unlikePost(req.user.userId, postId);
-    return new ApiResponseDto('Đã bỏ like bài viết', null);
+  @ApiResponse({ status: HttpStatus.OK, description: 'Đã bỏ like (kèm like_count mới)' })
+  async unlikePost(
+    @Req() req: UserRequest,
+    @Param('postId') postId: string,
+  ): Promise<ApiResponseDto<{ like_count: number }>> {
+    const result = await this.postService.unlikePost(req.user.userId, postId);
+    return new ApiResponseDto('Đã bỏ like bài viết', result);
   }
 
   @Post(':postId/save')
@@ -207,9 +213,35 @@ export class PostController {
   @ApiOperation({ summary: 'Xem chi tiết một bài đăng' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Chi tiết bài đăng.', type: GetPostDto })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Không tìm thấy.' })
-  async findOne(@Param('postId') postId: string): Promise<ApiResponseDto<GetPostDto>> {
-    const post = await this.postService.findOne(postId);
-    return new ApiResponseDto("Get post's detail sucessfully", plainToInstance(GetPostDto, post));
+  async findOne(
+    @Req() req: UserRequest,
+    @Param('postId') postId: string,
+  ): Promise<ApiResponseDto<GetPostDto>> {
+    const post = await this.postService.findOneWithMeta(postId, req.user.userId);
+    const dto = new GetPostDto();
+    dto.post_id = post.post_id;
+    dto.title = post.title;
+    dto.description = post.description;
+    dto.price = Number(post.price);
+    dto.location = post.location;
+    dto.is_available = post.is_available;
+    dto.status = post.status;
+    dto.transaction_type = post.transaction_type;
+    dto.view_count = post.view_count;
+    dto.like_count = (post as any).like_count ?? 0;
+    dto.is_liked = (post as any).is_liked ?? false;
+    dto.image_urls = post.image_urls || [];
+    dto.created_at = post.created_at;
+    dto.user = {
+      user_id: post.user?.user_id,
+      full_name: post.user?.full_name,
+      avatar_url: post.user?.avatar_url,
+    };
+    dto.category = post.category
+      ? { category_id: post.category.category_id, name: (post.category as any).category_name }
+      : null;
+
+    return new ApiResponseDto("Get post's detail sucessfully", dto);
   }
 
   @Get()
@@ -217,6 +249,7 @@ export class PostController {
   @ApiQuery({ name: 'category_id', required: false, description: 'Lọc theo ID danh mục' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Danh sách bài đăng.', type: [GetPostDto] })
   async findAll(
+    @Req() req: UserRequest,
     @Query('category_id') categoryId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -225,10 +258,36 @@ export class PostController {
       category_id: categoryId,
     };
     
-    const { data, total } = await this.postService.findAll(filters, page, limit);
-    
+    const { data, total } = await this.postService.findAll(filters, page, limit, req.user.userId);
+
+    const mapped = data.map((post) => {
+      const dto = new GetPostDto();
+      dto.post_id = post.post_id;
+      dto.title = post.title;
+      dto.description = post.description;
+      dto.price = Number(post.price);
+      dto.location = post.location;
+      dto.is_available = post.is_available;
+      dto.status = post.status;
+      dto.transaction_type = post.transaction_type;
+      dto.view_count = post.view_count;
+      dto.like_count = (post as any).like_count ?? 0;
+      dto.is_liked = (post as any).is_liked ?? false;
+      dto.image_urls = post.image_urls || [];
+      dto.created_at = post.created_at;
+      dto.user = {
+        user_id: post.user?.user_id,
+        full_name: post.user?.full_name,
+        avatar_url: post.user?.avatar_url,
+      };
+      dto.category = post.category
+        ? { category_id: post.category.category_id, name: (post.category as any).category_name }
+        : null;
+      return dto;
+    });
+
     return new ApiResponseDto("Get list posts", {
-      data: plainToInstance(GetPostDto, data),
+      data: mapped,
       total: total,
       page: page,
       limit: limit,

@@ -23,6 +23,17 @@ export class PostService {
     private ratingRepository: Repository<Rating>,
   ) {}
 
+  private toBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') return value === 't' || value === 'true' || value === '1';
+    return false;
+  }
+
+  private async getLikeCount(post_id: string): Promise<number> {
+    return this.postLikeRepository.count({ where: { post_id } });
+  }
+
   async create(user_id: string, createPostDto: CreatePostDto): Promise<Post> {
     //Kiểm tra logic nghiệp vụ (ví dụ: giá phải có nếu là bán)
     if (createPostDto.transaction_type === PostTransactionType.SELL && (createPostDto.price === undefined || createPostDto.price === null)) {
@@ -55,22 +66,106 @@ export class PostService {
 
     return post;
   }
-  
-  async findAll(filters: { user_id?: string; category_id?: string; is_available?: boolean }, page = 1, limit = 20): Promise<{ data: Post[], total: number }> {
-    const skip = (page - 1) * limit;
-    
-    // Xây dựng điều kiện tìm kiếm
-    const where: any = { is_available: true, ...filters };
-    if (filters.is_available !== undefined) {
-        where.is_available = filters.is_available;
+
+  async findOneWithMeta(post_id: string, current_user_id: string): Promise<Post & { like_count: number; is_liked: boolean }> {
+    const qb = this.postsRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.user', 'user')
+      .leftJoinAndSelect('post.category', 'category')
+      .where('post.post_id = :post_id', { post_id })
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)', 'cnt')
+            .from(PostLike, 'pl')
+            .where('pl.post_id = post.post_id'),
+        'like_count',
+      )
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*) > 0', 'liked')
+            .from(PostLike, 'pl2')
+            .where('pl2.post_id = post.post_id')
+            .andWhere('pl2.user_id = :current_user_id'),
+        'is_liked',
+      )
+      .setParameter('current_user_id', current_user_id);
+
+    const { entities, raw } = await qb.getRawAndEntities();
+    const post = entities[0];
+    if (!post) {
+      throw new NotFoundException(`Không tìm thấy bài đăng với ID "${post_id}".`);
     }
 
-    const [data, total] = await this.postsRepository.findAndCount({
-      where: where,
-      relations: ['user', 'category'],
-      take: limit,
-      skip: skip,
-      order: { created_at: 'DESC' },
+    // Tăng view_count (không chờ)
+    this.postsRepository.increment({ post_id }, 'view_count', 1).catch((e) =>
+      console.error('Failed to increment view count:', e),
+    );
+
+    const like_count = Number(raw?.[0]?.like_count ?? 0);
+    const is_liked = this.toBoolean(raw?.[0]?.is_liked);
+    return Object.assign(post, { like_count, is_liked });
+  }
+  
+  async findAll(
+    filters: { user_id?: string; category_id?: string; is_available?: boolean },
+    page = 1,
+    limit = 20,
+    current_user_id?: string,
+  ): Promise<{ data: Array<Post & { like_count: number; is_liked: boolean }>; total: number }> {
+    const skip = (page - 1) * limit;
+
+    const is_available = filters.is_available !== undefined ? filters.is_available : true;
+
+    // Base query for count
+    const baseQb = this.postsRepository.createQueryBuilder('post').where('post.is_available = :is_available', { is_available });
+    if (filters.user_id) {
+      baseQb.andWhere('post.user_id = :user_id', { user_id: filters.user_id });
+    }
+    if (filters.category_id) {
+      baseQb.andWhere('post.category_id = :category_id', { category_id: filters.category_id });
+    }
+
+    const total = await baseQb.getCount();
+
+    const dataQb = baseQb
+      .clone()
+      .leftJoinAndSelect('post.user', 'user')
+      .leftJoinAndSelect('post.category', 'category')
+      .orderBy('post.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)', 'cnt')
+            .from(PostLike, 'pl')
+            .where('pl.post_id = post.post_id'),
+        'like_count',
+      );
+
+    if (current_user_id) {
+      dataQb
+        .addSelect(
+          (sub) =>
+            sub
+              .select('COUNT(*) > 0', 'liked')
+              .from(PostLike, 'pl2')
+              .where('pl2.post_id = post.post_id')
+              .andWhere('pl2.user_id = :current_user_id'),
+          'is_liked',
+        )
+        .setParameter('current_user_id', current_user_id);
+    } else {
+      dataQb.addSelect('false', 'is_liked');
+    }
+
+    const { entities, raw } = await dataQb.getRawAndEntities();
+    const data = entities.map((post, idx) => {
+      const like_count = Number(raw?.[idx]?.like_count ?? 0);
+      const is_liked = this.toBoolean(raw?.[idx]?.is_liked);
+      return Object.assign(post, { like_count, is_liked });
     });
 
     return { data, total };
@@ -143,7 +238,7 @@ export class PostService {
     return { data, total };
   }
 
-  async likePost(user_id: string, post_id: string): Promise<void> {
+  async likePost(user_id: string, post_id: string): Promise<{ like_count: number }> {
     const post = await this.postsRepository.findOne({ where: { post_id } });
     if (!post) throw new NotFoundException('Bài đăng không tồn tại');
     if (post.user_id === user_id) throw new ForbiddenException('Không thể tự like bài viết của mình');
@@ -153,10 +248,13 @@ export class PostService {
 
     const like = this.postLikeRepository.create({ user_id, post_id });
     await this.postLikeRepository.save(like);
+
+    return { like_count: await this.getLikeCount(post_id) };
   }
 
-  async unlikePost(user_id: string, post_id: string): Promise<void> {
+  async unlikePost(user_id: string, post_id: string): Promise<{ like_count: number }> {
     await this.postLikeRepository.delete({ user_id, post_id });
+    return { like_count: await this.getLikeCount(post_id) };
   }
 
   async savePost(user_id: string, post_id: string): Promise<void> {

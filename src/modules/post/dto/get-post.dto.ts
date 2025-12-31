@@ -58,6 +58,14 @@ export class GetPostDto {
   @Expose()
   view_count: number;
 
+  @ApiProperty({ description: 'Tổng số like của bài đăng' })
+  @Expose()
+  like_count: number;
+
+  @ApiProperty({ description: 'Người dùng hiện tại đã like bài này chưa' })
+  @Expose()
+  is_liked: boolean;
+
   @ApiProperty({ type: [String] })
   @Expose()
   image_urls: string[];
@@ -75,5 +83,5 @@ export class GetPostDto {
   @ApiProperty({ type: SimpleCategoryDto })
   @Expose()
   @Type(() => SimpleCategoryDto)
-  category: SimpleCategoryDto;
+  category: SimpleCategoryDto | null;
 }
