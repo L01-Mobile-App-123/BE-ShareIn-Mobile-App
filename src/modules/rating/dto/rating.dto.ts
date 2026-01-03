@@ -3,7 +3,7 @@ import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min, IsArray, Arr
 
 export class CreateRatingDto {
   @ApiProperty({ description: 'ID của người được đánh giá' })
-  @IsUUID()
+  // @IsUUID()
   @IsNotEmpty()
   rated_user_id: string;
 

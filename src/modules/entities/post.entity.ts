@@ -12,6 +12,7 @@ import {
 import { User } from './user.entity';
 import { Category } from './category.entity';
 import { Notification } from './notification.entity';
+import { Conversation } from './conversation.entity';
 import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 import { PostStatus } from '@common/enums/post-status.enum';
 
@@ -86,4 +87,7 @@ export class Post {
 
   @OneToMany(() => Notification, (notification) => notification.post)
   notifications: Notification[];
+
+  @OneToMany(() => Conversation, (conversation) => conversation.post)
+  conversations: Conversation[];
 }

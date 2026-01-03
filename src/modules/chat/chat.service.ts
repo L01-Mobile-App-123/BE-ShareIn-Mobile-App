@@ -7,6 +7,7 @@ import { FindOrCreateConversationDto, CreateMessageDto } from './dto/chat.dto';
 import { UsersService } from '@modules/users/user.service';
 import { MessageType } from '@common/enums/message-type.enum'
 import { User } from '@modules/entities/user.entity';
+import { Post as PostEntity } from '@modules/entities/post.entity';
 
 @Injectable()
 export class ChatService {
@@ -17,6 +18,8 @@ export class ChatService {
     private messageRepository: Repository<Message>,
     @InjectRepository(User) // Inject User Repository
     private userRepository: Repository<User>,
+    @InjectRepository(PostEntity)
+    private postRepository: Repository<PostEntity>,
     private usersService: UsersService,
   ) {}
 
@@ -27,7 +30,7 @@ export class ChatService {
     currentUserId: string,
     dto: FindOrCreateConversationDto,
   ): Promise<Conversation> {
-    const { recipient_id } = dto;
+    const { recipient_id, post_id } = dto;
     
     if (currentUserId === recipient_id) {
         throw new ConflictException('Không thể tự chat với chính mình');
@@ -41,8 +44,9 @@ export class ChatService {
       where: {
         initiator_id: user1Id,
         recipient_id: user2Id,
+        post_id,
       },
-      relations: ['initiator', 'recipient'],
+      relations: ['initiator', 'recipient', 'post'],
     });
 
     if (conversation) {
@@ -52,10 +56,17 @@ export class ChatService {
     // 2. Nếu chưa có, kiểm tra User tồn tại
     await this.usersService.findOne(recipient_id);
 
+    // 2.1. Kiểm tra Post tồn tại
+    const post = await this.postRepository.findOne({ where: { post_id } });
+    if (!post) {
+      throw new NotFoundException('Không tìm thấy bài đăng.');
+    }
+
     // 3. Tạo Conversation mới
     conversation = this.conversationRepository.create({
       initiator_id: user1Id,
       recipient_id: user2Id,
+      post_id,
       last_message_at: new Date(), 
     });
 
@@ -72,7 +83,7 @@ export class ChatService {
         { initiator_id: userId },
         { recipient_id: userId },
       ],
-      relations: ['initiator', 'recipient'], // Bỏ relation 'post'
+      relations: ['initiator', 'recipient', 'post'],
       order: {
         last_message_at: 'DESC', 
       },

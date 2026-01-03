@@ -9,9 +9,17 @@ export class FindOrCreateConversationDto {
     description: 'ID của người dùng muốn chat cùng',
     example: '550e8400-e29b-41d4-a716-446655440000'
   })
-  @IsUUID()
+  // @IsUUID()
   @IsNotEmpty()
   recipient_id: string;
+
+  @ApiProperty({
+    description: 'ID bài đăng (post) mà cuộc trò chuyện đang trao đổi về',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  post_id: string;
 }
 
 export class CreateMessageDto {
@@ -59,6 +67,9 @@ export class FindOrCreateConversationResponseDto {
   @ApiProperty()
   conversation_id: string;
 
+  @ApiProperty({ description: 'ID bài đăng gắn với cuộc trò chuyện' })
+  post_id: string;
+
   @ApiProperty()
   message: string;
 }
@@ -89,6 +100,22 @@ export class MessageResponseDto {
 export class GetConversationsResponseDto {
   @ApiProperty()
   conversation_id: string;
+
+  @ApiProperty({
+    description: 'Thông tin bài đăng gắn với cuộc trò chuyện',
+    example: {
+      post_id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      title: 'Bán giáo trình giải tích',
+      price: 120000,
+      image_urls: ['https://...'],
+    },
+  })
+  post: {
+    post_id: string;
+    title: string;
+    price: number;
+    image_urls: string[];
+  };
 
   @ApiProperty({ type: UserSummaryDto, description: 'Thông tin người chat cùng (đối phương)' })
   partner: UserSummaryDto;

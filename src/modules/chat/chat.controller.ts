@@ -29,7 +29,7 @@ export class ChatController {
   ) {}
   
   @Post()
-  @ApiOperation({ summary: 'Tạo hoặc lấy Conversation giữa hai user (Chat 1-1)' })
+  @ApiOperation({ summary: 'Tạo hoặc lấy Conversation giữa hai user về một bài đăng (Chat 1-1 theo post)' })
   @ApiBody({ type: FindOrCreateConversationDto })
   @ApiResponse({ 
     status: 200, 
@@ -55,6 +55,7 @@ export class ChatController {
       message,
       {
         conversation_id: conversation.conversation_id,
+        post_id: (conversation as any).post_id,
         message,
       }
     );
@@ -65,7 +66,7 @@ export class ChatController {
   @ApiResponse({ 
     status: 200, 
     type: [GetConversationsResponseDto],
-    description: 'Danh sách Conversation kèm thông tin đối phương và tin nhắn cuối.' 
+    description: 'Danh sách Conversation kèm thông tin đối phương, post, và tin nhắn cuối.' 
   })
   async findAll(@Req() req: UserRequest): Promise<ApiResponseDto<GetConversationsResponseDto[]>> {
     const currentUserId = req.user.userId;

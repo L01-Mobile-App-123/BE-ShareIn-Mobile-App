@@ -18,8 +18,16 @@ export class ChatMapperService {
     // chỉ lưu thời gian. Nếu muốn hiển thị nội dung, cần query thêm Message mới nhất.
     // Ở đây tôi để placeholder hoặc null nếu bạn chưa implement logic lấy content.
     
+    const post = conversation.post;
+
     return {
       conversation_id: conversation.conversation_id,
+      post: {
+        post_id: post?.post_id || (conversation as any).post_id,
+        title: post?.title || '',
+        price: post?.price !== undefined ? Number(post.price) : 0,
+        image_urls: post?.image_urls || [],
+      },
       partner: {
         user_id: partner.user_id,
         full_name: partner.full_name,
