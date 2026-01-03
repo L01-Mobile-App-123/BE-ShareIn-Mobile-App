@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Post } from '@modules/entities/post.entity';
 import { SearchHistory } from '@modules/entities/search-history.entity';
 import { SearchFilterDto, SortBy, TimeRange } from './dto/search.dto';
+import { PostLike } from '@modules/entities/post-like.entity';
+import { PostSave } from '@modules/entities/post-save.entity';
 
 @Injectable()
 export class SearchService {
@@ -12,12 +14,23 @@ export class SearchService {
     private readonly postRepository: Repository<Post>,
     @InjectRepository(SearchHistory)
     private readonly searchHistoryRepository: Repository<SearchHistory>,
+    @InjectRepository(PostLike)
+    private readonly postLikeRepository: Repository<PostLike>,
+    @InjectRepository(PostSave)
+    private readonly postSaveRepository: Repository<PostSave>,
   ) {}
+
+  private toBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') return value === 't' || value === 'true' || value === '1';
+    return false;
+  }
 
   async search(
     filters: SearchFilterDto,
     userId?: string, // Optional: để lưu lịch sử
-  ): Promise<{ data: Post[], total: number }> {
+  ): Promise<{ data: Array<Post & { like_count: number; is_liked: boolean; is_saved: boolean }>; total: number }> {
     const { 
       keyword, transactionType, categoryId, timeRange, 
       sortBy, minPrice, maxPrice, page = 1, limit = 20 
@@ -28,26 +41,24 @@ export class SearchService {
       await this.saveSearchHistory(userId, keyword);
     }
 
-    // 2. Xây dựng Query
-    const queryBuilder = this.postRepository
+    // 2. Xây dựng base query (không join) để count chính xác
+    const baseQb = this.postRepository
       .createQueryBuilder('post')
-      .leftJoinAndSelect('post.user', 'user')
-      .leftJoinAndSelect('post.category', 'category')
       .where('post.is_available = :isAvailable', { isAvailable: true });
 
     if (keyword) {
-      queryBuilder.andWhere(
+      baseQb.andWhere(
         '(post.title ILIKE :keyword OR post.description ILIKE :keyword)',
         { keyword: `%${keyword}%` }
       );
     }
 
     if (transactionType) {
-      queryBuilder.andWhere('post.transaction_type = :transactionType', { transactionType });
+      baseQb.andWhere('post.transaction_type = :transactionType', { transactionType });
     }
 
     if (categoryId) {
-      queryBuilder.andWhere('post.category_id = :categoryId', { categoryId });
+      baseQb.andWhere('post.category_id = :categoryId', { categoryId });
     }
 
     if (timeRange) {
@@ -60,16 +71,58 @@ export class SearchService {
       }
       
       if (startDate) {
-        queryBuilder.andWhere('post.created_at >= :startDate', { startDate });
+        baseQb.andWhere('post.created_at >= :startDate', { startDate });
       }
     }
 
     if (minPrice !== undefined) {
-      queryBuilder.andWhere('post.price >= :minPrice', { minPrice });
+      baseQb.andWhere('post.price >= :minPrice', { minPrice });
     }
 
     if (maxPrice !== undefined) {
-      queryBuilder.andWhere('post.price <= :maxPrice', { maxPrice });
+      baseQb.andWhere('post.price <= :maxPrice', { maxPrice });
+    }
+
+    const total = await baseQb.getCount();
+
+    // Data query (join + meta)
+    const queryBuilder = baseQb
+      .clone()
+      .leftJoinAndSelect('post.user', 'user')
+      .leftJoinAndSelect('post.category', 'category')
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)', 'cnt')
+            .from(PostLike, 'pl')
+            .where('pl.post_id = post.post_id'),
+        'like_count',
+      );
+
+    if (userId) {
+      queryBuilder
+        .addSelect(
+          (sub) =>
+            sub
+              .select('COUNT(*) > 0', 'liked')
+              .from(PostLike, 'pl2')
+              .where('pl2.post_id = post.post_id')
+              .andWhere('pl2.user_id = :userId'),
+          'is_liked',
+        )
+        .addSelect(
+          (sub) =>
+            sub
+              .select('COUNT(*) > 0', 'saved')
+              .from(PostSave, 'ps')
+              .where('ps.post_id = post.post_id')
+              .andWhere('ps.user_id = :userId'),
+          'is_saved',
+        )
+        .setParameter('userId', userId);
+    } else {
+      queryBuilder.addSelect('false', 'is_liked');
+      queryBuilder.addSelect('false', 'is_saved');
     }
 
     // Sắp xếp
@@ -92,7 +145,13 @@ export class SearchService {
     const skip = (page - 1) * limit;
     queryBuilder.skip(skip).take(limit);
 
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const { entities, raw } = await queryBuilder.getRawAndEntities();
+    const data = entities.map((post, idx) => {
+      const like_count = Number(raw?.[idx]?.like_count ?? 0);
+      const is_liked = this.toBoolean(raw?.[idx]?.is_liked);
+      const is_saved = this.toBoolean(raw?.[idx]?.is_saved);
+      return Object.assign(post, { like_count, is_liked, is_saved });
+    });
 
     return { data, total };
   }

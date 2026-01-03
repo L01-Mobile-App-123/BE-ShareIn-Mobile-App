@@ -17,53 +17,84 @@ export enum TimeRange {
 }
 
 export class SearchFilterDto {
-  @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm', example: 'Giáo trình' })
+  @ApiPropertyOptional({
+    description: 'Từ khóa tìm kiếm (tìm trong title/description)',
+    example: 'Giáo trình',
+  })
   @IsString()
   @IsOptional()
   keyword?: string;
 
-  @ApiPropertyOptional({ enum: PostTransactionType, description: 'Loại giao dịch' })
+  @ApiPropertyOptional({
+    enum: PostTransactionType,
+    enumName: 'PostTransactionType',
+    description: 'Loại giao dịch',
+    example: PostTransactionType.SELL,
+  })
   @IsEnum(PostTransactionType)
   @IsOptional()
   transactionType?: PostTransactionType;
 
-  @ApiPropertyOptional({ description: 'ID danh mục' })
+  @ApiPropertyOptional({
+    description: 'ID danh mục',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  })
   @IsUUID()
   @IsOptional()
   categoryId?: string;
 
-  @ApiPropertyOptional({ enum: TimeRange, description: 'Khoảng thời gian' })
+  @ApiPropertyOptional({
+    enum: TimeRange,
+    enumName: 'TimeRange',
+    description: 'Khoảng thời gian lọc theo created_at',
+    example: TimeRange.LAST_7_DAYS,
+  })
   @IsEnum(TimeRange)
   @IsOptional()
   timeRange?: TimeRange;
 
-  @ApiPropertyOptional({ enum: SortBy, description: 'Sắp xếp theo' })
+  @ApiPropertyOptional({
+    enum: SortBy,
+    enumName: 'SortBy',
+    description: 'Sắp xếp theo',
+    example: SortBy.NEWEST,
+  })
   @IsEnum(SortBy)
   @IsOptional()
   sortBy?: SortBy;
 
-  @ApiPropertyOptional({ description: 'Giá thấp nhất', example: 10000 })
+  @ApiPropertyOptional({ description: 'Giá thấp nhất', example: 10000, minimum: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   @IsOptional()
   minPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Giá cao nhất', example: 500000 })
+  @ApiPropertyOptional({ description: 'Giá cao nhất', example: 500000, minimum: 0 })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   @IsOptional()
   maxPrice?: number;
 
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({
+    description: 'Số trang (bắt đầu từ 1)',
+    default: 1,
+    minimum: 1,
+    example: 1,
+  })
   @Type(() => Number)
   @IsNumber()
   @Min(1)
   @IsOptional()
   page?: number = 1;
 
-  @ApiPropertyOptional({ default: 20 })
+  @ApiPropertyOptional({
+    description: 'Số phần tử mỗi trang',
+    default: 20,
+    minimum: 1,
+    example: 20,
+  })
   @Type(() => Number)
   @IsNumber()
   @Min(1)
