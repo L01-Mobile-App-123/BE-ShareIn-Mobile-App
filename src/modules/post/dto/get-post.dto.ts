@@ -10,6 +10,8 @@ class SimpleUserDto {
   full_name: string;
   @ApiPropertyOptional()
   avatar_url: string;
+  @ApiProperty()
+  reputation_score: number;
 }
 
 // DTO cho Category đơn giản

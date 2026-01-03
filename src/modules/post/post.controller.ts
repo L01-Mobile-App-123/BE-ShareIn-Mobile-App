@@ -236,6 +236,7 @@ export class PostController {
       user_id: post.user?.user_id,
       full_name: post.user?.full_name,
       avatar_url: post.user?.avatar_url,
+      reputation_score: post.user?.reputation_score || 0,
     };
     dto.category = post.category
       ? { category_id: post.category.category_id, name: (post.category as any).category_name }
@@ -279,6 +280,7 @@ export class PostController {
         user_id: post.user?.user_id,
         full_name: post.user?.full_name,
         avatar_url: post.user?.avatar_url,
+        reputation_score: post.user?.reputation_score || 0,
       };
       dto.category = post.category
         ? { category_id: post.category.category_id, name: (post.category as any).category_name }
