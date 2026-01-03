@@ -230,6 +230,7 @@ export class PostController {
     dto.view_count = post.view_count;
     dto.like_count = (post as any).like_count ?? 0;
     dto.is_liked = (post as any).is_liked ?? false;
+    dto.is_saved = (post as any).is_saved ?? false;
     dto.image_urls = post.image_urls || [];
     dto.created_at = post.created_at;
     dto.user = {
@@ -274,6 +275,7 @@ export class PostController {
       dto.view_count = post.view_count;
       dto.like_count = (post as any).like_count ?? 0;
       dto.is_liked = (post as any).is_liked ?? false;
+      dto.is_saved = (post as any).is_saved ?? false;
       dto.image_urls = post.image_urls || [];
       dto.created_at = post.created_at;
       dto.user = {

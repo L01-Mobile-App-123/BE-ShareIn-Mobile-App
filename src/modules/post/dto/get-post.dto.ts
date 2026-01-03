@@ -68,6 +68,10 @@ export class GetPostDto {
   @Expose()
   is_liked: boolean;
 
+  @ApiProperty({ description: 'Người dùng hiện tại đã lưu (save) bài này chưa' })
+  @Expose()
+  is_saved: boolean;
+
   @ApiProperty({ type: [String] })
   @Expose()
   image_urls: string[];

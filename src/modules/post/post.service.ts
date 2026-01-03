@@ -90,6 +90,15 @@ export class PostService {
             .andWhere('pl2.user_id = :current_user_id'),
         'is_liked',
       )
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*) > 0', 'saved')
+            .from(PostSave, 'ps')
+            .where('ps.post_id = post.post_id')
+            .andWhere('ps.user_id = :current_user_id'),
+        'is_saved',
+      )
       .setParameter('current_user_id', current_user_id);
 
     const { entities, raw } = await qb.getRawAndEntities();
@@ -105,7 +114,8 @@ export class PostService {
 
     const like_count = Number(raw?.[0]?.like_count ?? 0);
     const is_liked = this.toBoolean(raw?.[0]?.is_liked);
-    return Object.assign(post, { like_count, is_liked });
+    const is_saved = this.toBoolean(raw?.[0]?.is_saved);
+    return Object.assign(post, { like_count, is_liked, is_saved });
   }
   
   async findAll(
@@ -113,7 +123,7 @@ export class PostService {
     page = 1,
     limit = 20,
     current_user_id?: string,
-  ): Promise<{ data: Array<Post & { like_count: number; is_liked: boolean }>; total: number }> {
+  ): Promise<{ data: Array<Post & { like_count: number; is_liked: boolean; is_saved: boolean }>; total: number }> {
     const skip = (page - 1) * limit;
 
     const is_available = filters.is_available !== undefined ? filters.is_available : true;
@@ -157,15 +167,27 @@ export class PostService {
           'is_liked',
         )
         .setParameter('current_user_id', current_user_id);
+
+      dataQb.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*) > 0', 'saved')
+            .from(PostSave, 'ps')
+            .where('ps.post_id = post.post_id')
+            .andWhere('ps.user_id = :current_user_id'),
+        'is_saved',
+      );
     } else {
       dataQb.addSelect('false', 'is_liked');
+      dataQb.addSelect('false', 'is_saved');
     }
 
     const { entities, raw } = await dataQb.getRawAndEntities();
     const data = entities.map((post, idx) => {
       const like_count = Number(raw?.[idx]?.like_count ?? 0);
       const is_liked = this.toBoolean(raw?.[idx]?.is_liked);
-      return Object.assign(post, { like_count, is_liked });
+      const is_saved = this.toBoolean(raw?.[idx]?.is_saved);
+      return Object.assign(post, { like_count, is_liked, is_saved });
     });
 
     return { data, total };
