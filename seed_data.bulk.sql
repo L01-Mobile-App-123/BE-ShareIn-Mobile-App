@@ -413,7 +413,7 @@ SELECT
     ELSE u.user_id
   END,
   p.owner_user_id,
-  4 + (g % 2),
+  81 + (g % 20),
   'Giao dịch nhanh gọn, uy tín.',
   NULL,
   now() - ((random() * 120)::int || ' days')::interval

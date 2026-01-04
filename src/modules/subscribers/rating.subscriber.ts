@@ -65,13 +65,14 @@ export class RatingSubscriber implements EntitySubscriberInterface<Rating> {
       return;
     }
 
-    // Tính điểm trung bình (1-5) -> chuyển thành 20-100
+    // Thang điểm 1-100: reputation_score cũng theo 0-100
     const avgScore = ratings.reduce((sum, r) => sum + r.rating_score, 0) / ratings.length;
-    const reputationScore = Math.round(avgScore * 20);
+    const reputationScore = Math.round(avgScore);
 
-    // Đếm up (4-5 sao) và down (1-2 sao)
-    const votesUp = ratings.filter(r => r.rating_score >= 4).length;
-    const votesDown = ratings.filter(r => r.rating_score <= 2).length;
+    // Quy đổi tương đương 1-5 sao:
+    // Up: 4-5 sao => score >= 61, Down: 1-2 sao => score <= 40
+    const votesUp = ratings.filter((r) => r.rating_score >= 61).length;
+    const votesDown = ratings.filter((r) => r.rating_score <= 40).length;
 
     console.log(`Updating user ${userId}: score=${reputationScore}, up=${votesUp}, down=${votesDown}`); // Debug log
 

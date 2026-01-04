@@ -142,7 +142,7 @@ export class RatingController {
   @Get('user/:userId/stats')
   @ApiOperation({ 
     summary: 'Lấy thống kê đánh giá của người dùng',
-    description: 'Trả về điểm trung bình, tổng số đánh giá và phân bố theo từng mức sao (1-5 sao).'
+    description: 'Trả về điểm trung bình (1-100), tổng số đánh giá và phân bố theo các khoảng điểm (1-20, 21-40, 41-60, 61-80, 81-100).'
   })
   @ApiParam({ name: 'userId', description: 'ID người dùng cần xem thống kê' })
   @ApiResponse({ 

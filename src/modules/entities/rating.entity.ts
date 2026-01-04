@@ -23,7 +23,7 @@ export class Rating {
   rated_user_id: string;
 
   @Column({ type: 'int' })
-  rating_score: number; // 1-5 sao
+  rating_score: number; // 1-100
 
   @Column({ type: 'text', nullable: true })
   comment: string;

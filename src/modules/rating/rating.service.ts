@@ -40,7 +40,7 @@ export class RatingService {
       rated_user_id: dto.rated_user_id,
       rating_score: dto.rating_score, // Thay đổi từ is_positive
       comment: dto.comment,
-      proof_image_urls: dto.proof_image_urls || [],
+      proof_image_urls: [],
     });
 
     return await this.ratingRepository.save(rating);
@@ -67,12 +67,6 @@ export class RatingService {
     // Cập nhật các trường
     if (dto.rating_score !== undefined) rating.rating_score = dto.rating_score;
     if (dto.comment !== undefined) rating.comment = dto.comment;
-    if (dto.proof_image_urls !== undefined) {
-      if (dto.proof_image_urls.length > 10) {
-        throw new BadRequestException('Tối đa 10 ảnh chứng minh');
-      }
-      rating.proof_image_urls = dto.proof_image_urls;
-    }
 
     return await this.ratingRepository.save(rating);
   }
@@ -138,31 +132,32 @@ export class RatingService {
       return {
         total_ratings: 0,
         average_score: 0,
-        five_star_count: 0,
-        four_star_count: 0,
-        three_star_count: 0,
-        two_star_count: 0,
-        one_star_count: 0,
+        range_81_100_count: 0,
+        range_61_80_count: 0,
+        range_41_60_count: 0,
+        range_21_40_count: 0,
+        range_1_20_count: 0,
       };
     }
 
     const sum = ratings.reduce((acc, r) => acc + r.rating_score, 0);
     const average = sum / total;
 
-    const fiveStarCount = ratings.filter((r) => r.rating_score === 5).length;
-    const fourStarCount = ratings.filter((r) => r.rating_score === 4).length;
-    const threeStarCount = ratings.filter((r) => r.rating_score === 3).length;
-    const twoStarCount = ratings.filter((r) => r.rating_score === 2).length;
-    const oneStarCount = ratings.filter((r) => r.rating_score === 1).length;
+    // Thống kê theo các khoảng điểm 1-100
+    const range_81_100_count = ratings.filter((r) => r.rating_score >= 81 && r.rating_score <= 100).length;
+    const range_61_80_count = ratings.filter((r) => r.rating_score >= 61 && r.rating_score <= 80).length;
+    const range_41_60_count = ratings.filter((r) => r.rating_score >= 41 && r.rating_score <= 60).length;
+    const range_21_40_count = ratings.filter((r) => r.rating_score >= 21 && r.rating_score <= 40).length;
+    const range_1_20_count = ratings.filter((r) => r.rating_score >= 1 && r.rating_score <= 20).length;
 
     return {
       total_ratings: total,
       average_score: Math.round(average * 10) / 10, // Làm tròn 1 chữ số thập phân
-      five_star_count: fiveStarCount,
-      four_star_count: fourStarCount,
-      three_star_count: threeStarCount,
-      two_star_count: twoStarCount,
-      one_star_count: oneStarCount,
+      range_81_100_count,
+      range_61_80_count,
+      range_41_60_count,
+      range_21_40_count,
+      range_1_20_count,
     };
   }
 }
