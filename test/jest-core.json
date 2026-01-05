@@ -1,0 +1,22 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "../src",
+  "testRegex": ".*\\.spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@modules/(.*)$": "<rootDir>/modules/$1",
+    "^@common/(.*)$": "<rootDir>/common/$1",
+    "^@config/(.*)$": "<rootDir>/config/$1",
+    "^@firebase/(.*)$": "<rootDir>/firebase/$1"
+  },
+  "collectCoverageFrom": [
+    "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/*.controller.ts",
+    "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/dto/**/*.ts",
+    "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/*.mapper.service.ts",
+    "!**/*.spec.ts"
+  ],
+  "coverageDirectory": "../coverage-core",
+  "testEnvironment": "node"
+}

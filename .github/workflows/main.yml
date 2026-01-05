@@ -28,7 +28,6 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/share-in:latest
-          # Cache giúp build lần sau nhanh hơn
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

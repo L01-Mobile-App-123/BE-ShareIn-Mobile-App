@@ -52,17 +52,22 @@ describe('ChatController (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/conversations')
-        .send({ recipient_id: '550e8400-e29b-41d4-a716-446655440000' })
+        .send({
+          recipient_id: '550e8400-e29b-41d4-a716-446655440000',
+          post_id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        })
         .expect(201);
 
       expect(chatService.findOrCreateConversation).toHaveBeenCalledTimes(1);
     });
 
     it('invalid: dto fails validation -> 400', async () => {
-      // recipient_id requires UUID
       await request(app.getHttpServer())
         .post('/conversations')
-        .send({ recipient_id: 'not-a-uuid' })
+        .send({
+          recipient_id: 'any-non-empty-string',
+          post_id: 'not-a-uuid',
+        })
         .expect(400);
     });
 
@@ -70,7 +75,10 @@ describe('ChatController (e2e)', () => {
       chatService.findOrCreateConversation.mockRejectedValue(new Error('conflict'));
       await request(app.getHttpServer())
         .post('/conversations')
-        .send({ recipient_id: '550e8400-e29b-41d4-a716-446655440000' })
+        .send({
+          recipient_id: '550e8400-e29b-41d4-a716-446655440000',
+          post_id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        })
         .expect(500);
     });
   });
