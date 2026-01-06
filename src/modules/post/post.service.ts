@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '@modules/entities/post.entity'; 
@@ -8,11 +8,14 @@ import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 import { PostLike } from '@modules/entities/post-like.entity';
 import { PostSave } from '@modules/entities/post-save.entity';
 import { Rating } from '@modules/entities/rating.entity';
-import { PostStatus } from '@common/enums/post-status.enum';
 import { PostFeedSortBy, PostFeedTimeRange } from './dto/get-posts-query.dto';
+import { PostStatus } from '@common/enums/post-status.enum';
+import { NotificationService } from '@modules/notifications/notification.service';
 
 @Injectable()
 export class PostService {
+  private readonly logger = new Logger(PostService.name);
+
   constructor(
     @InjectRepository(Post)
     private postsRepository: Repository<Post>,
@@ -22,6 +25,7 @@ export class PostService {
     private postSaveRepository: Repository<PostSave>,
     @InjectRepository(Rating)
     private ratingRepository: Repository<Rating>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private toBoolean(value: unknown): boolean {
@@ -49,6 +53,12 @@ export class PostService {
     });
 
     const savedPost = await this.postsRepository.save(newPost);
+
+    if (savedPost.status === PostStatus.POSTED && savedPost.is_available) {      
+      this.notificationService
+        .notifyNewPostInInterests(savedPost)
+        .catch((e) => this.logger.error('Failed to create interest notifications for new post', e));
+    }
     return savedPost;
   }
 
@@ -264,6 +274,8 @@ export class PostService {
       throw new ForbiddenException('Bạn không có quyền chỉnh sửa bài đăng này.');
     }
     
+    const previousStatus = post.status;
+
     // Cập nhật các trường
     Object.assign(post, updatePostDto);
 
@@ -272,7 +284,16 @@ export class PostService {
         throw new BadRequestException('Trường giá (price) là bắt buộc khi loại giao dịch là BÁN_RE.');
     }
 
-    return this.postsRepository.save(post);
+    const saved = await this.postsRepository.save(post);
+
+    // Nếu user publish draft -> posted thì tạo notifications
+    if (previousStatus !== PostStatus.POSTED && saved.status === PostStatus.POSTED && saved.is_available) {
+      this.notificationService
+        .notifyNewPostInInterests(saved)
+        .catch((e) => this.logger.error('Failed to create interest notifications after publishing post', e));
+    }
+
+    return saved;
   }
   
   async updateImageUrls(post_id: string, user_id: string, imageUrls: string[]): Promise<Post> {
@@ -464,6 +485,12 @@ export class PostService {
     });
 
     const savedPost = await this.postsRepository.save(newPost);
+
+    if (savedPost.status === PostStatus.POSTED && savedPost.is_available) {
+      this.notificationService
+        .notifyNewPostInInterests(savedPost)
+        .catch((e) => this.logger.error('Failed to create interest notifications for repost', e));
+    }
     return savedPost;
   }
 }

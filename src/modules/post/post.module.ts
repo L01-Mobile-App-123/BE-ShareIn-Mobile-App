@@ -10,9 +10,10 @@ import { Rating } from '@modules/entities/rating.entity';
 import { User } from '@modules/entities/user.entity';
 import { UsersModule } from '@modules/users/users.module';
 import { CategoryModule } from '@modules/category/category.module';
+import { NotificationModule } from '@modules/notifications/notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Post, PostLike, PostSave, Rating, User]), CloudinaryModule, UsersModule, CategoryModule],
+  imports: [TypeOrmModule.forFeature([Post, PostLike, PostSave, Rating, User]), CloudinaryModule, UsersModule, CategoryModule, NotificationModule],
   controllers: [PostController],
   providers: [PostService],
   exports: [PostService]

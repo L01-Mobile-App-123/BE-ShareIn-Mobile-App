@@ -1,9 +1,12 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { type Messaging, type Message, type MulticastMessage } from 'firebase-admin/messaging';
 import { FCM_MESSAGING } from '@firebase/firebase.constants';
 import { Notification } from '@modules/entities/notification.entity';
+import { UserInterest } from '@modules/entities/user-interest.entity';
+import { NotificationType } from '@common/enums/notification-type.enum';
+import { Post } from '@modules/entities/post.entity';
 
 @Injectable()
 export class NotificationService {
@@ -13,98 +16,88 @@ export class NotificationService {
     @Inject(FCM_MESSAGING) private readonly messaging: Messaging,
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(UserInterest)
+    private readonly userInterestRepository: Repository<UserInterest>,
   ) {}
-  
-  /**
-   * Gửi thông báo đến một thiết bị cụ thể
-   * @param deviceToken Token của thiết bị (lấy từ client)
-   * @param title Tiêu đề thông báo
-   * @param body Nội dung thông báo
-   * @param data Dữ liệu tùy chọn (optional data payload)
-   */
-  async sendToDevice(
-    deviceToken: string,
-    title: string,
-    body: string,
-    data?: { [key: string]: string },
-  ) {
-    const payload: Message = {
-      token: deviceToken,
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: data || {},
-      // Cấu hình cho Android
-      android: {
-        notification: {
-          sound: 'default',
-          // channelId: 'default_channel_id', // Bạn có thể cần tạo channel ở client
-        },
-      },
-      // Cấu hình cho Apple
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-          },
-        },
-      },
-    };
 
-    try {
-      const response = await this.messaging.send(payload);
-      this.logger.log(`Gửi thông báo thành công: ${response}`);
-      return response;
-    } catch (error) {
-      this.logger.error('Lỗi khi gửi thông báo:', error);
-      throw new Error(`Không thể gửi thông báo: ${error.message}`);
-    }
+  private normalizeText(value: string): string {
+    return (value || '').toLowerCase();
+  }
+
+  private keywordMatchesPost(interest: UserInterest, postText: string): boolean {
+    const keywords = (interest.keywords || [])
+      .map((k) => (k || '').trim().toLowerCase())
+      .filter((k) => k.length > 0);
+
+    if (keywords.length === 0) return false;
+    return keywords.some((k) => postText.includes(k));
   }
 
   /**
-   * Gửi thông báo đến nhiều thiết bị
-  /**
-   * Gửi thông báo đến nhiều thiết bị
-   * @param deviceTokens Mảng các token
+   * Tạo notification DB cho user có sở thích (category + optional keywords) khi có bài POSTED mới.
    */
-  async sendToMultipleDevices(
-    deviceTokens: string[],
-    title: string,
-    body: string,
-  ) {
-    const message: MulticastMessage = {
-      tokens: deviceTokens,
-      notification: { title, body },
-    };
+  async notifyNewPostInInterests(post: Post): Promise<{ matched: number; created: number }> {
+    if (!post?.post_id || !post?.category_id) return { matched: 0, created: 0 };
 
-    try {
-      const response = await this.messaging.sendEachForMulticast(message);
-      this.logger.log(`Gửi multi-device thành công: ${response.successCount} messages`);
-      return response;
-    } catch (error) {
-      this.logger.error('Lỗi khi gửi multi-device:', error);
-      throw error;
-    }
-  }
-  /**
-   * Gửi thông báo đến một chủ đề (topic)
-   * @param topic Tên chủ đề
-   */
-  async sendToTopic(topic: string, title: string, body: string) {
-    const message: Message = {
-      topic,
-      notification: { title, body },
-    };
+    const interests = await this.userInterestRepository.find({
+      where: { category_id: post.category_id, is_active: true },
+      select: ['user_id', 'keywords', 'is_active', 'category_id'],
+    });
 
-    try {
-      const response = await this.messaging.send(message);
-      this.logger.log(`Gửi topic thành công: ${response}`);
-      return response;
-    } catch (error) {
-      this.logger.error('Lỗi khi gửi topic:', error);
-      throw error;
-    }
+    if (interests.length === 0) return { matched: 0, created: 0 };
+
+    const postText = this.normalizeText(`${post.title ?? ''} ${post.description ?? ''}`);
+
+    // Notify by CATEGORY subscription first (all users registered this category)
+    const categoryUserIds = Array.from(
+      new Set(interests.filter((i) => i.user_id !== post.user_id).map((i) => i.user_id)),
+    );
+
+    // Additionally detect who also matches KEYWORDS (to customize content)
+    const keywordMatchedUserIds = new Set(
+      interests
+        .filter((i) => i.user_id !== post.user_id)
+        .filter((i) => this.keywordMatchesPost(i, postText))
+        .map((i) => i.user_id),
+    );
+    
+    if (categoryUserIds.length === 0) return { matched: 0, created: 0 };
+
+    const existing = await this.notificationRepository.find({
+      where: {
+        post_id: post.post_id,
+        notification_type: NotificationType.NEW_POST_IN_INTEREST as any,
+        user_id: In(categoryUserIds),
+      },
+      select: ['user_id'],
+    });
+
+    const existingUserIds = new Set(existing.map((n) => n.user_id));
+    const toCreateUserIds = categoryUserIds.filter((id) => !existingUserIds.has(id));
+
+    if (toCreateUserIds.length === 0) return { matched: categoryUserIds.length, created: 0 };
+
+    const title = 'Có bài đăng mới';
+
+    const rows = toCreateUserIds.map((userId) => {
+      const content = keywordMatchedUserIds.has(userId)
+        ? `"${post.title}" khớp từ khóa bạn quan tâm.`
+        : `"${post.title}" trong danh mục bạn quan tâm.`;
+
+      return this.notificationRepository.create({
+        user_id: userId,
+        post_id: post.post_id,
+        category_id: post.category_id,
+        notification_type: NotificationType.NEW_POST_IN_INTEREST as any,
+        title,
+        content,
+        is_read: false,
+      });
+    });
+
+    await this.notificationRepository.save(rows);
+
+    return { matched: categoryUserIds.length, created: toCreateUserIds.length };
   }
 
   /**
