@@ -7,6 +7,7 @@ import { RepostDto } from './dto/repost.dto';
 import { CategoryDto } from './dto/category.dto';
 import { GetPostDto } from './dto/get-post.dto';
 import { MultipleFilesUploadDto } from './dto/multiple-files-upload.dto';
+import { GetPostsQueryDto } from './dto/get-posts-query.dto';
 import { plainToInstance } from 'class-transformer';
 import { PostStatus } from '@common/enums/post-status.enum';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiConsumes, ApiParam } from '@nestjs/swagger';
@@ -249,17 +250,20 @@ export class PostController {
   @Get()
   @ApiOperation({ summary: 'Lấy danh sách các bài đăng (có thể lọc)' })
   @ApiQuery({ name: 'category_id', required: false, description: 'Lọc theo ID danh mục' })
+  @ApiQuery({ name: 'transaction_type', required: false, description: 'Loại giao dịch (SELL/BUY/EXCHANGE/DONATE...)' })
+  @ApiQuery({ name: 'min_price', required: false, description: 'Giá tối thiểu', type: 'number' })
+  @ApiQuery({ name: 'max_price', required: false, description: 'Giá tối đa', type: 'number' })
+  @ApiQuery({ name: 'time_range', required: false, description: 'Khoảng thời gian tạo bài (7days/30days/all)' })
+  @ApiQuery({ name: 'sort_by', required: false, description: 'Sắp xếp (newest/oldest/price_asc/price_desc/most_liked/most_viewed)' })
+  @ApiQuery({ name: 'is_available', required: false, description: 'Lọc theo is_available (mặc định true)', type: 'boolean' })
+  @ApiQuery({ name: 'page', required: false, description: 'Trang (mặc định 1)', type: 'number' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Số phần tử mỗi trang (mặc định 20)', type: 'number' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Danh sách bài đăng.', type: [GetPostDto] })
   async findAll(
     @Req() req: UserRequest,
-    @Query('category_id') categoryId: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20,
+    @Query() query: GetPostsQueryDto,
   ): Promise<ApiResponseDto<{data: GetPostDto[], total: number, page: number, limit: number}>> {
-    const filters = {
-      category_id: categoryId,
-    };
-    
+    const { page = 1, limit = 20, ...filters } = query;
     const { data, total } = await this.postService.findAll(filters, page, limit, req.user.userId);
 
     const mapped = data.map((post) => {
