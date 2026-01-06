@@ -14,9 +14,17 @@
   "collectCoverageFrom": [
     "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/*.controller.ts",
     "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/dto/**/*.ts",
-    "modules/{auth,chat,notifications,post,rating,search,user-interest,users}/**/*.mapper.service.ts",
+    "!modules/**/dto/**/websocket.dto.ts",
     "!**/*.spec.ts"
   ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 70,
+      "functions": 70,
+      "lines": 70,
+      "statements": 70
+    }
+  },
   "coverageDirectory": "../coverage-core",
   "testEnvironment": "node"
 }
