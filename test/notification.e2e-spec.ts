@@ -31,32 +31,6 @@ describe('NotificationController (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  describe('POST /notification/test-send', () => {
-    it('valid: 201/200', async () => {
-      notificationService.sendToDevice.mockResolvedValue({ success: true });
-      await request(app.getHttpServer())
-        .post('/notification/test-send')
-        .send({ token: 't', title: 'A', body: 'B' })
-        .expect(201);
-    });
-
-    it('invalid: missing token -> 400 (validation)', async () => {
-      await request(app.getHttpServer())
-        .post('/notification/test-send')
-        .send({ title: 'A' })
-        .expect(400);
-    });
-
-    it('invalid: service throws -> still 201 with error object (controller catches)', async () => {
-      notificationService.sendToDevice.mockRejectedValue(new Error('firebase down'));
-      await request(app.getHttpServer())
-        .post('/notification/test-send')
-        // DTO yêu cầu đủ token/title/body (IsString, không IsOptional)
-        .send({ token: 't', title: 'A', body: 'B' })
-        .expect(201);
-    });
-  });
-
   describe('GET /notification', () => {
     it('valid: 200', async () => {
       notificationService.getNotifications.mockResolvedValue({

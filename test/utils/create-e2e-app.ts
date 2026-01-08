@@ -23,6 +23,9 @@ export async function createE2eApp(options: CreateE2eAppOptions): Promise<INestA
 
   const app = moduleFixture.createNestApplication();
 
+  // Giảm noise log trong test (các case intentionally throw sẽ không spam console)
+  app.useLogger(false);
+
   // Bật validation để có case invalid/valid dựa trên DTO (class-validator)
   app.useGlobalPipes(
     new ValidationPipe({
