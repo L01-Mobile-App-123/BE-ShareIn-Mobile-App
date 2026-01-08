@@ -41,40 +41,6 @@ describe('NotificationController', () => {
     jest.clearAllMocks();
   });
 
-  describe('testSendNotification', () => {
-    it('valid: calls service with defaults for title/body when missing', async () => {
-      // Mục tiêu: cover default title/body
-      notificationService.sendToDevice.mockResolvedValue({ success: true });
-      const res = await controller.testSendNotification({ token: 't' } as any);
-      expect(notificationService.sendToDevice).toHaveBeenCalledWith(
-        't',
-        expect.stringContaining('Test Title'),
-        expect.stringContaining('thông báo test'),
-        { testData: 'dayLaDataPayload123' },
-      );
-      expect(res.message).toContain('Test notification sent');
-    });
-
-    it('valid: passes custom title/body when provided', async () => {
-      notificationService.sendToDevice.mockResolvedValue({ ok: 1 });
-      await controller.testSendNotification({ token: 't', title: 'A', body: 'B' } as any);
-      expect(notificationService.sendToDevice).toHaveBeenCalledWith('t', 'A', 'B', expect.any(Object));
-    });
-
-    it('invalid: returns error object (controller catches)', async () => {
-      // Mục tiêu: cover nhánh catch trong controller (không throw)
-      notificationService.sendToDevice.mockRejectedValue(new Error('firebase down'));
-      const res = await controller.testSendNotification({ token: 't' } as any);
-      expect(res).toEqual(
-        expect.objectContaining({
-          status: 'error',
-          message: 'Failed to send notification',
-          error: 'firebase down',
-        }),
-      );
-    });
-  });
-
   describe('getNotifications', () => {
     it('valid: calls service with userId and paging', async () => {
       notificationService.getNotifications.mockResolvedValue({

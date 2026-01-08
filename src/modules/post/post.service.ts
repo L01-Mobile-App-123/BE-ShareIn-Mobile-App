@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '@modules/entities/post.entity'; 
@@ -8,10 +8,14 @@ import { PostTransactionType } from '@common/enums/post-transaction-type.enum';
 import { PostLike } from '@modules/entities/post-like.entity';
 import { PostSave } from '@modules/entities/post-save.entity';
 import { Rating } from '@modules/entities/rating.entity';
+import { PostFeedSortBy, PostFeedTimeRange } from './dto/get-posts-query.dto';
 import { PostStatus } from '@common/enums/post-status.enum';
+import { NotificationService } from '@modules/notifications/notification.service';
 
 @Injectable()
 export class PostService {
+  private readonly logger = new Logger(PostService.name);
+
   constructor(
     @InjectRepository(Post)
     private postsRepository: Repository<Post>,
@@ -21,6 +25,7 @@ export class PostService {
     private postSaveRepository: Repository<PostSave>,
     @InjectRepository(Rating)
     private ratingRepository: Repository<Rating>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private toBoolean(value: unknown): boolean {
@@ -48,6 +53,12 @@ export class PostService {
     });
 
     const savedPost = await this.postsRepository.save(newPost);
+
+    if (savedPost.status === PostStatus.POSTED && savedPost.is_available) {      
+      this.notificationService
+        .notifyNewPostInInterests(savedPost)
+        .catch((e) => this.logger.error('Failed to create interest notifications for new post', e));
+    }
     return savedPost;
   }
 
@@ -119,7 +130,16 @@ export class PostService {
   }
   
   async findAll(
-    filters: { user_id?: string; category_id?: string; is_available?: boolean },
+    filters: {
+      user_id?: string;
+      category_id?: string;
+      is_available?: boolean;
+      transaction_type?: PostTransactionType;
+      min_price?: number;
+      max_price?: number;
+      time_range?: PostFeedTimeRange;
+      sort_by?: PostFeedSortBy;
+    },
     page = 1,
     limit = 20,
     current_user_id?: string,
@@ -129,12 +149,40 @@ export class PostService {
     const is_available = filters.is_available !== undefined ? filters.is_available : true;
 
     // Base query for count
-    const baseQb = this.postsRepository.createQueryBuilder('post').where('post.is_available = :is_available', { is_available });
+    const baseQb = this.postsRepository
+      .createQueryBuilder('post')
+      .where('post.is_available = :is_available', { is_available });
+
     if (filters.user_id) {
       baseQb.andWhere('post.user_id = :user_id', { user_id: filters.user_id });
     }
     if (filters.category_id) {
       baseQb.andWhere('post.category_id = :category_id', { category_id: filters.category_id });
+    }
+
+    if (filters.transaction_type) {
+      baseQb.andWhere('post.transaction_type = :transaction_type', {
+        transaction_type: filters.transaction_type,
+      });
+    }
+
+    if (filters.min_price !== undefined) {
+      baseQb.andWhere('post.price IS NOT NULL').andWhere('post.price >= :min_price', {
+        min_price: filters.min_price,
+      });
+    }
+
+    if (filters.max_price !== undefined) {
+      baseQb.andWhere('post.price IS NOT NULL').andWhere('post.price <= :max_price', {
+        max_price: filters.max_price,
+      });
+    }
+
+    if (filters.time_range === PostFeedTimeRange.LAST_7_DAYS) {
+      baseQb.andWhere("post.created_at >= NOW() - INTERVAL '7 days'");
+    }
+    if (filters.time_range === PostFeedTimeRange.LAST_30_DAYS) {
+      baseQb.andWhere("post.created_at >= NOW() - INTERVAL '30 days'");
     }
 
     const total = await baseQb.getCount();
@@ -143,7 +191,6 @@ export class PostService {
       .clone()
       .leftJoinAndSelect('post.user', 'user')
       .leftJoinAndSelect('post.category', 'category')
-      .orderBy('post.created_at', 'DESC')
       .skip(skip)
       .take(limit)
       .addSelect(
@@ -154,6 +201,28 @@ export class PostService {
             .where('pl.post_id = post.post_id'),
         'like_count',
       );
+
+    switch (filters.sort_by) {
+      case PostFeedSortBy.OLDEST:
+        dataQb.orderBy('post.created_at', 'ASC');
+        break;
+      case PostFeedSortBy.PRICE_ASC:
+        dataQb.orderBy('post.price', 'ASC', 'NULLS LAST').addOrderBy('post.created_at', 'DESC');
+        break;
+      case PostFeedSortBy.PRICE_DESC:
+        dataQb.orderBy('post.price', 'DESC', 'NULLS LAST').addOrderBy('post.created_at', 'DESC');
+        break;
+      case PostFeedSortBy.MOST_LIKED:
+        dataQb.orderBy('like_count', 'DESC').addOrderBy('post.created_at', 'DESC');
+        break;
+      case PostFeedSortBy.MOST_VIEWED:
+        dataQb.orderBy('post.view_count', 'DESC').addOrderBy('post.created_at', 'DESC');
+        break;
+      case PostFeedSortBy.NEWEST:
+      default:
+        dataQb.orderBy('post.created_at', 'DESC');
+        break;
+    }
 
     if (current_user_id) {
       dataQb
@@ -205,6 +274,8 @@ export class PostService {
       throw new ForbiddenException('Bạn không có quyền chỉnh sửa bài đăng này.');
     }
     
+    const previousStatus = post.status;
+
     // Cập nhật các trường
     Object.assign(post, updatePostDto);
 
@@ -213,7 +284,16 @@ export class PostService {
         throw new BadRequestException('Trường giá (price) là bắt buộc khi loại giao dịch là BÁN_RE.');
     }
 
-    return this.postsRepository.save(post);
+    const saved = await this.postsRepository.save(post);
+
+    // Nếu user publish draft -> posted thì tạo notifications
+    if (previousStatus !== PostStatus.POSTED && saved.status === PostStatus.POSTED && saved.is_available) {
+      this.notificationService
+        .notifyNewPostInInterests(saved)
+        .catch((e) => this.logger.error('Failed to create interest notifications after publishing post', e));
+    }
+
+    return saved;
   }
   
   async updateImageUrls(post_id: string, user_id: string, imageUrls: string[]): Promise<Post> {
@@ -405,6 +485,12 @@ export class PostService {
     });
 
     const savedPost = await this.postsRepository.save(newPost);
+
+    if (savedPost.status === PostStatus.POSTED && savedPost.is_available) {
+      this.notificationService
+        .notifyNewPostInInterests(savedPost)
+        .catch((e) => this.logger.error('Failed to create interest notifications for repost', e));
+    }
     return savedPost;
   }
 }

@@ -258,13 +258,24 @@ describe('PostController (e2e)', () => {
 
     it('valid: findAll -> 200', async () => {
       postService.findAll.mockResolvedValue({ data: [], total: 0 });
-      await request(app.getHttpServer()).get('/posts?category_id=c1&page=1&limit=20').expect(200);
-      expect(postService.findAll).toHaveBeenCalledWith({ category_id: 'c1' }, 1, 20, 'user-id-test');
+      const categoryId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+      await request(app.getHttpServer())
+        .get(`/posts?category_id=${categoryId}&page=1&limit=20`)
+        .expect(200);
+      expect(postService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ category_id: categoryId }),
+        1,
+        20,
+        'user-id-test',
+      );
     });
 
     it('invalid: findAll -> 500', async () => {
       postService.findAll.mockRejectedValue(new Error('boom'));
-      await request(app.getHttpServer()).get('/posts?category_id=c1&page=1&limit=20').expect(500);
+      const categoryId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+      await request(app.getHttpServer())
+        .get(`/posts?category_id=${categoryId}&page=1&limit=20`)
+        .expect(500);
     });
   });
 

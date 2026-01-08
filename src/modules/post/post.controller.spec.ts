@@ -282,13 +282,13 @@ describe('PostController', () => {
 
     it('valid: findAll calls postService.findAll with filters and paging', async () => {
       postService.findAll.mockResolvedValue({ data: [], total: 0 });
-      await controller.findAll(makeReq('viewer'), 'c1', 1, 20);
+      await controller.findAll(makeReq('viewer'), { category_id: 'c1', page: 1, limit: 20 } as any);
       expect(postService.findAll).toHaveBeenCalledWith({ category_id: 'c1' }, 1, 20, 'viewer');
     });
 
     it('invalid: findAll bubbles up errors', async () => {
       postService.findAll.mockRejectedValue(new Error('boom'));
-      await expect(controller.findAll(makeReq('viewer'), 'c1', 1, 20)).rejects.toThrow('boom');
+      await expect(controller.findAll(makeReq('viewer'), { category_id: 'c1', page: 1, limit: 20 } as any)).rejects.toThrow('boom');
     });
 
     it('valid: update calls postService.update', async () => {

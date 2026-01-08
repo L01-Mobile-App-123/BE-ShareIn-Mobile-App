@@ -16,34 +16,6 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   /**
-   * Endpoint để test gửi thông báo
-   */
-  @Post('test-send')
-  @Post('test-send')
-  @ApiOperation({ summary: 'Test gửi thông báo tới thiết bị' })
-  @ApiResponse({ status: 200, description: 'Thông báo được gửi thành công' })
-  async testSendNotification(
-    @Body(new ValidationPipe()) body: TestNotificationDto,
-  ) {
-    try {
-      const response = await this.notificationService.sendToDevice(
-        body.token,
-        body.title || '🔔 Test Title (ShareIn)',
-        body.body || 'Đây là thông báo test từ NestJS cho dự án ShareIn.',
-        { testData: 'dayLaDataPayload123' },
-      );
-      
-      return new ApiResponseDto('Test notification sent!', response);
-    } catch (error) {
-      return {
-        status: 'error',
-        message: 'Failed to send notification',
-        error: (error as Error).message,
-      };
-    }
-  }
-
-  /**
    * Lấy danh sách thông báo của user hiện tại
    */
   @Get()
